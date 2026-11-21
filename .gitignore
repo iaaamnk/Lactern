@@ -24,9 +24,13 @@ htmlcov/
 .tox/
 .nox/
 
-# App Data & Cache
+# App Data & Cache (demo seeds tracked, temporary caches ignored)
 data/cache/*.json
 !data/cache/.gitkeep
+!data/cache/LxCjscf2PjA.json
+!data/cache/0wp5Z3z4bjM.json
+!data/cache/GvrIe41E7xA.json
+!data/cache/jNQXAC9IVRw.json
 
 # Environment variables & secrets
 .env

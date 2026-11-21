@@ -479,6 +479,38 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
         raise RuntimeError(f"Whisper speech-to-text failed for video '{video_id}': {e}")
 
 
+def fetch_transcript_cloud_proxy(video_id: str) -> List[TranscriptSnippet]:
+    """
+    Tier 0 caption retrieval via cloud-proxy REST API.
+    Uses high-speed residential proxy routing to bypass datacenter/cloud IP blocks on Render, AWS, and GCP.
+    """
+    import httpx
+    try:
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        resp = httpx.post(
+            "https://transcribeyoutube.com/api/transcript",
+            json={"url": url},
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            timeout=12.0
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok") and data.get("transcript"):
+                snippets: List[TranscriptSnippet] = []
+                for item in data["transcript"]:
+                    text = item.get("text", "").strip()
+                    if text:
+                        start = float(item.get("start", 0.0))
+                        dur = float(item.get("dur", 3.0))
+                        snippets.append(TranscriptSnippet(text=text, start=round(start, 2), duration=round(dur, 2)))
+                if len(snippets) >= 1:
+                    logger.info("Successfully fetched %d snippets via cloud proxy API.", len(snippets))
+                    return clean_transcript_lines(snippets)
+    except Exception as e:
+        logger.info("Cloud proxy transcript retrieval failed (%s). Falling back to InnerTube API...", e)
+    return []
+
+
 def _get_snippet_field(item: Any, field_name: str, default: Any = None) -> Any:
     """Helper to extract text/start/duration across different youtube-transcript-api object/dict versions."""
     if isinstance(item, dict):
@@ -491,8 +523,8 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
     Main entry point for Phase 1:
     Fetches captions with start time and duration per line.
     Strategy:
-      1. Tier 1 (yt-dlp InnerTube Mobile Extraction): Skips webpage download to bypass
-         cloud IP 429 rate limits on Render/AWS/GCP.
+      0. Tier 0 (Cloud Proxy API): Residential proxy route that completely bypasses datacenter IP blocks.
+      1. Tier 1 (yt-dlp InnerTube Mobile Extraction): Skips webpage download to bypass cloud IP 429 rate limits.
       2. Tier 2 (youtube-transcript-api): Standard caption scraping fallback.
       3. Tier 3 (Whisper Speech-to-Text): Audio download & transcription if zero captions exist.
     """
@@ -503,6 +535,15 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
         languages = ["en", "en-US", "en-GB"]
 
     video_id = extract_video_id(url_or_id)
+
+    # 0. Cloud Proxy API: Guaranteed residential IP bypass for Render/AWS/GCP
+    try:
+        proxy_snippets = fetch_transcript_cloud_proxy(video_id)
+        if len(proxy_snippets) >= 1:
+            logger.info("Retrieved %d snippets via cloud proxy API.", len(proxy_snippets))
+            return clean_transcript_lines(proxy_snippets)
+    except Exception as e:
+        logger.info("Cloud proxy transcript retrieval failed (%s). Falling back...", e)
 
     # 1. Primary Strategy: yt-dlp direct timedtext extraction (bypasses cloud IP 429 blocks)
     try:

@@ -42,6 +42,17 @@ if (closeDrawerBtn) {
   });
 }
 
+// Demo chips click handler
+document.querySelectorAll(".demo-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const vid = chip.getAttribute("data-vid");
+    if (vid) {
+      videoUrlInput.value = `https://www.youtube.com/watch?v=${vid}`;
+      ingestBtn.click();
+    }
+  });
+});
+
 // 1. YouTube IFrame API Initialization
 function onYouTubeIframeAPIReady() {
   console.log("YouTube IFrame API loaded.");

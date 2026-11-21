@@ -1,0 +1,528 @@
+{
+  "video_id": "GvrIe41E7xA",
+  "model_name": "pure-tfidf-ngram-v1",
+  "chunks": [
+    {
+      "chunk_id": "C1",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 4.16,
+      "end_sec": 56.48,
+      "text": "oh Stuart you're not going to answer it he wants to talk about Penny I don't want to talk about Penny you're making an assumption perhaps the comic book store is on fire he need your assistance why would he call me we don't know you don't answer the phone we can't know I'm not answering the phone Sheldon answer the phone lonard no there it went to voicemail AR you going to check your",
+      "formatted_start": "00:04",
+      "formatted_end": "00:56"
+    },
+    {
+      "chunk_id": "C2",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 52.64,
+      "end_sec": 104.56,
+      "text": "voicemail AR you going to check your messages no you have to check your message is Leonard the leaving of a message is one half of a social contract which is completed by the checking of the message if that contract breaks down then all social contracts break down and we descend into Anarchy it must be hell inside your head at times all right the power supply is reconnected I think we're back in business let's just run a few tests before we take it outside sheld we got Wi-Fi check GPS check battery charged check 4 hours of Our Lives gone check all right all systems go in 5 4 3",
+      "formatted_start": "00:53",
+      "formatted_end": "01:45"
+    },
+    {
+      "chunk_id": "C3",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 101.76,
+      "end_sec": 151.44,
+      "text": "2 1 that's what my train used to do ready need to call Tex a boy give me the number probably wind up talking to some foreign guy who's reading from the same manual I have it's my father you jokes your call is important to us all our technicians are busy helping other customers please stay on the line and someone will be with you shortly",
+      "formatted_start": "01:42",
+      "formatted_end": "02:31"
+    },
+    {
+      "chunk_id": "C4",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 148.63,
+      "end_sec": 198.08,
+      "text": "[Music] [Laughter] what happened to me when did I become an old man baffled by modern technology next thing you know I'll be hitching my pants up to my armpits and complaining about the awful music the kids are listening to but it is awful Isn't it a you listen to that noise hang on hang on it's working I did it how do you do that no idea but I did [Music] it you should be flying it inside I'm",
+      "formatted_start": "02:29",
+      "formatted_end": "03:18"
+    },
+    {
+      "chunk_id": "C5",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 190.41,
+      "end_sec": 235.44,
+      "text": "[Music] it you should be flying it inside I'm not flying it and who is I don't know must be getting a Wi-Fi signal from somewhere [Music] else initiate Landing sequence initiate Landing sequence hey the camera's working oh look it's me next going help you yes it's a robot Uprising call the police what are we going to tell the girls it's not a problem I mean without lying and now you've made it a problem come on we're a couple of smart guys sure we can come up with a way to explain this it doesn't make us look",
+      "formatted_start": "03:10",
+      "formatted_end": "03:55"
+    },
+    {
+      "chunk_id": "C6",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 229.48,
+      "end_sec": 285.0,
+      "text": "guys sure we can come up with a way to explain this it doesn't make us look [Music] bad oh the boys had to drive all the way to San Bernardino for the solder and a flat they bought it who are you texting Raj he really wants to see this movie he'll never make it in time I know I want to make him feel bad haha Leonard and I are about to see Suicide Squad spoiler alert when I see you I'm going to spoil it you're a good friend okay would you ladies please leave the room for a",
+      "formatted_start": "03:49",
+      "formatted_end": "04:45"
+    },
+    {
+      "chunk_id": "C7",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 281.4,
+      "end_sec": 327.12,
+      "text": "moment why I need to rub my genitals on their prototype hello Mommy hello rajish what a nice surprise well I've been thinking about you how you doing are you happy mommy such a sweet boy for asking can't believe you come from the poison seed of your father well I like to think I take mostly after you anyway speaking of Daddy I had a very strange conversation with him he said he couldn't afford to send me money anymore because of his active social life what does that mean active social life well let's not talk about him or whatever Shenanigans he may",
+      "formatted_start": "04:41",
+      "formatted_end": "05:27"
+    },
+    {
+      "chunk_id": "C8",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 319.84,
+      "end_sec": 365.88,
+      "text": "active social life well let's not talk about him or whatever Shenanigans he may or may not be up to let's talk about you right is your father saying someone all I know Mommy is that he's a single wealthy doctor and now for some reason there's no money for your little boy well however much money your father was giving you I'll give you more thank you Mommy I love you helicopters for everybody oh come on don't pout I'm sorry I ruined your game not pouting I'm bruing which is how sexy men pout and actually was kind of fun you're just saying",
+      "formatted_start": "05:20",
+      "formatted_end": "06:06"
+    },
+    {
+      "chunk_id": "C9",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 358.4,
+      "end_sec": 406.6,
+      "text": "pout and actually was kind of fun you're just saying that yeah I like the time travel element thank you I thought it was inspired it was by Terminator I hope 20 years from now we really are all still together and still friends of course really well hey how about this whether we're friends not friends scattered around the world no matter what let's all promise to meet in front of this building exactly 20 years from tonight at 8:00 p.m. and dinner like we always do a I love it putting it my phone right now yeah me to my phone doesn't have a calendar I'll just write it on my",
+      "formatted_start": "05:58",
+      "formatted_end": "06:47"
+    },
+    {
+      "chunk_id": "C10",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 402.76,
+      "end_sec": 449.8,
+      "text": "calendar I'll just write it on my hand and it's done yep we're all in all right I'll see you guys in 20 years I know it what's going on in here I am making molecular cocktails this sphere is actually a Cosmopolitan oh how do you drink it just put it in your mouth and pop it like a zip I think I'll have a beer first take a picture with me why well Raj and I always talked about",
+      "formatted_start": "06:43",
+      "formatted_end": "07:30"
+    },
+    {
+      "chunk_id": "C11",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 442.56,
+      "end_sec": 488.64,
+      "text": "beer first take a picture with me why well Raj and I always talked about learning how to make cocktails like this together so I taught myself and I'm putting this on Instagram so he can see it and feel like a turd say cheese is this about the space prob he's working on without you you bet you're the very one Howard your grown men you guys don't have to do everything together I know that's why I'm spending tonight with you trying to hurt Raj's feelings with my honey bunch you're being childish no he is so I have a dominant personality we all",
+      "formatted_start": "07:23",
+      "formatted_end": "08:09"
+    },
+    {
+      "chunk_id": "C12",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 484.12,
+      "end_sec": 530.72,
+      "text": "know that I'm sorry what do we know in Social groupings I just naturally wind up in charge don't take this the wrong way but how many of these little boozeballs have you had you don't think I'm a leader I was kidding of course you are right I couldn't change if I wanted to you better not change because I love who you are now will you need help cleaning all this up when you're done or can you do it all by yourself all by myself there's my big boss man have you guys seen this feature that lets you talk to Siri without pressing any buttons no how does it work you just say uh hey Siri what time is it the time",
+      "formatted_start": "08:04",
+      "formatted_end": "08:51"
+    },
+    {
+      "chunk_id": "C13",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 528.72,
+      "end_sec": 580.72,
+      "text": "is 6:37 p.m. so now anyone can control your phone hey Siri show me pictures of naked Grandma butts nice try only recognize this is my voice oh cool hey CI show me pictures of naked Grandma bus I don't sound like that here are some images of naked Grandma hey good news everybody now that I'm no longer with Amy I have an extra ticket to the annual Thanksgiving lunch buffet at the aquarium cafeteria who wants it well you realize you won't be going alone I'll be there the whole time providing fish and Pilgrim facts can you people hear me check it out LeBron James posted a picture of me",
+      "formatted_start": "08:49",
+      "formatted_end": "09:41"
+    },
+    {
+      "chunk_id": "C14",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 573.36,
+      "end_sec": 624.32,
+      "text": "facts can you people hear me check it out LeBron James posted a picture of me and him on Instagram I don't see you look right behind him no okay you see that table just past his left shoulder now go back two more tables and over to the right all I see is a yellow smudge that's me oh Raj hey Raj I'm here with Penny what the hell did you to say to Anu whatever do you mean why why would you tell her I wear ladies deodorant uh because you're a boy and it's really funny okay pardon me for having the confidence to smell Daisy",
+      "formatted_start": "09:33",
+      "formatted_end": "10:24"
+    },
+    {
+      "chunk_id": "C15",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 619.96,
+      "end_sec": 666.64,
+      "text": "fresh do me a favor and stay away from her God now I feel bad I know maybe we should take take her out again and do some damage control you know that's a good idea you think she can get us into Soho house I don't know but we owe it toage to try all right got his enemies list oh he updated the interface you can search by first name last name or length of Grudge is Tam on it let's see yep right here Tam when oh great what did he do hold on I have to agree to the terms of service now I'm not a robot okay which of these are",
+      "formatted_start": "10:20",
+      "formatted_end": "11:07"
+    },
+    {
+      "chunk_id": "C16",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 664.6,
+      "end_sec": 715.6,
+      "text": "plants and ween wait what what does it say he knows what he did oh come on wait wait wait wait if Tam knows what he did we can just ask him he's going to be on campus tomorrow showing his son around that makes Sheldon mad everything makes Sheldon mad yeah look at his list Jim Hensen for quote putting a terrifying giant yellow bird on on television and in my nightmares Amy and I have a superior relationship to yours you don't honestly think that do you you Leonard I assumed you knew the ranking of relationships in our Circle by quality is me and Amy Howard and bernardet Raj and his girlfriend",
+      "formatted_start": "11:05",
+      "formatted_end": "11:56"
+    },
+    {
+      "chunk_id": "C17",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 711.72,
+      "end_sec": 760.2,
+      "text": "Penny and chardonay Penny and you there isn't any ranking and and if there were we wouldn't be at the bottom of it yeah and actually I drink San Blanc what makes you think that your relationship is so wonderful and ours is it for starters we enjoy spending time together so do we and I've seen you guys ignore each other for hours doing totally different things it's called parallel play yeah toddlers do that not as well as we do we believe this guy has to be the best at everything so what why do you",
+      "formatted_start": "11:52",
+      "formatted_end": "12:40"
+    },
+    {
+      "chunk_id": "C18",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 752.64,
+      "end_sec": 803.68,
+      "text": "do we believe this guy has to be the best at everything so what why do you even care oh listen to them not even married and the honeymoon's over whatever you can't even go on a date without checking your relationship agreement if you've got a problem basing a relationship on a contract I'd like to tell you about 13 Plucky colonies that entered a relationship agreement called the US Constitution and it may not be cool to say so but I think that love affair is still pretty hot today it's a good thing I'm not wearing flag underwear right now cuz there's about to be a fire May I have one of your fries of course can I have a bite of your burger",
+      "formatted_start": "12:33",
+      "formatted_end": "13:24"
+    },
+    {
+      "chunk_id": "C19",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 801.4,
+      "end_sec": 847.4,
+      "text": "absolutely not some perfect couple he won't even share his food with her it has avocado on it she's allergic to avocado are you so jealous of our relationship you want Amy to die I'm not jealous I just think it's silly for you to compare relationships like there's something that can be Quantified everything is quantifiable you but that french fry a seven Spider-Man a nine and the number nine oddly only a four how ridiculous is he 100 CH you're just assigning random numbers to Things based on your opinion no I'm",
+      "formatted_start": "13:21",
+      "formatted_end": "14:07"
+    },
+    {
+      "chunk_id": "C20",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 840.0,
+      "end_sec": 890.84,
+      "text": "CH you're just assigning random numbers to Things based on your opinion no I'm not french fries have three variables crispiness saltiness and shape which is why a curly fry only gets a two you if I wanted curls for dinner I'd order a clown wig well a relationship is more complicated than a french fry not according to the work of Bersy Snider and aoto oh what do those Rascals do now they develop the relation ship closeness inventory which predicts the stability of a couple based on Behavior yeah not to be confused with the French fry goodness inventory that's pure Cooper so this is accurate it's been around for 25 years and has been extensively corroborated by other researchers it kind of takes the romance",
+      "formatted_start": "14:00",
+      "formatted_end": "14:51"
+    },
+    {
+      "chunk_id": "C21",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 883.2,
+      "end_sec": 930.92,
+      "text": "extensively corroborated by other researchers it kind of takes the romance out of relationships kind of it does it perfectly Sheldon and I got an 8.2 out of 10 fine we'll take it right now no don't what just don't take it why not cuz it's stupid who cares what number it is come on it'll be fun I said I don't want you to I'm getting another drink sorry I'm going to let you count this as two dates they're a lot of work hey sorry about that no we're sorry we never should have been comparing",
+      "formatted_start": "14:43",
+      "formatted_end": "15:31"
+    },
+    {
+      "chunk_id": "C22",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 926.64,
+      "end_sec": 974.24,
+      "text": "relationships in the first place why we won I just want to say one more thing about this just because penny and I are very different people does not mean that we're a bad couple the answer is one simple test away you know it's like when I thought there was a posum in my closet did I sit around wondering no I sent Leonard in with a pointy stick in a bag I killed his chewbaca slippers let's just take the test no no no I don't want oh cuz you know we're going to do bad because it doesn't matter I don't care if we're a 10 or a two or a one a one is possible marriage is scary you're scared",
+      "formatted_start": "15:27",
+      "formatted_end": "16:14"
+    },
+    {
+      "chunk_id": "C23",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 971.72,
+      "end_sec": 1020.36,
+      "text": "I'm scared but it doesn't make me not want to do it it just makes me want to hold your hand and do it with you leard it would make me so happy if you said things like that we got an 8.2 trust me you're happy eating that's a good sign you're going to have to wait 1 hour until you can go swimming again he's pretty cute he is should we name him it is Valentine's Day how about Valentino nice a classic rabbit",
+      "formatted_start": "16:12",
+      "formatted_end": "17:00"
+    },
+    {
+      "chunk_id": "C24",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1017.2,
+      "end_sec": 1063.04,
+      "text": "name Peter Rabbit Roger Rabbit Valentino walowitz rabbit oh look at all that chest hair and overbite of course you're wowit son of a he bit me are you okay no I'm not okay wild rabbits can have rabies oh why' you put your fan your's mouth poor judgment obviously he's so little I'm sure it's fine how can it be fine I just got attacked by a clearly anti medc wild animal it says rabies and rabbits is highly unlikely terrific it's not terrific lots of highly unlikely things happen you saw what's under this robe",
+      "formatted_start": "16:57",
+      "formatted_end": "17:43"
+    },
+    {
+      "chunk_id": "C25",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1057.2,
+      "end_sec": 1103.56,
+      "text": "terrific lots of highly unlikely things happen you saw what's under this robe and you still married me if you're really worried we'll take him to the vet and have him testing good thank you okay there is a test all they have to do is cut off his head and check his brain oh cut off his head that's where his little nose is he's not showing any symptoms okay I guess I'll just go to the emergency room to be safe Howe this is just your hypochondria when I sat on the mute button and thought I'd gone deaf that was my hypochondria dear crazy future Sheldon this is a thermostat it controls the temperature",
+      "formatted_start": "17:37",
+      "formatted_end": "18:24"
+    },
+    {
+      "chunk_id": "C26",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1097.16,
+      "end_sec": 1147.72,
+      "text": "Sheldon this is a thermostat it controls the temperature of the apartment the ideal setting is 72\u00b0 if you find this too cold the put on a jacket a straight jacket cuz 72 is the best and you're crazy now this is your spot you're very protective of it when anyone else tries to sit here you berate them relentlessly it sounds mean but somehow you make it adorable people are also delighted by your love of pranks for example Leonard has no idea what I did to his coffee it wasn't replace it with folders crystals I'll tell you that",
+      "formatted_start": "18:17",
+      "formatted_end": "19:08"
+    },
+    {
+      "chunk_id": "C27",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1140.92,
+      "end_sec": 1189.4,
+      "text": "it wasn't replace it with folders crystals I'll tell you that much hey can we please get back to work this is Leonard he's your best friend in the world just stop it this is ridiculous sometimes he gets cranky but you can trust him with your life and he does more things for you than I can even begin to list thank you oh no he's drinking it here you go I've got everything we'll need for the big game low fat turkey jerky low car beer 100 calorie snack packs pick up a y chromosome while you were there you might be short",
+      "formatted_start": "19:01",
+      "formatted_end": "19:49"
+    },
+    {
+      "chunk_id": "C28",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1182.6,
+      "end_sec": 1229.76,
+      "text": "packs pick up a y chromosome while you were there you might be short one hey I plan on leveling up in the game not my swimsuit size thank you very much gentlemen the game offers us a choice between playing for the Republic and the light side or the Empire and the dark side we're always the good guys and d and d we're lawful good and City of Heroes we're the heroes and Grand Theft a oh we pay the prostitutes promptly and never hit them with a bat those women are prostitutes you said they were raising money for stem cell research hey guys I got a surprise if it's yogurt that helps ladies poop I",
+      "formatted_start": "19:43",
+      "formatted_end": "20:30"
+    },
+    {
+      "chunk_id": "C29",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1226.44,
+      "end_sec": 1277.24,
+      "text": "think Raj beat you to it no Bernadette's going to be playing with us so that's pretty cool all right her is you invited your girlfriend this is supposed to be our weekend I had no choice last night she said why don't we go out for brunch tomorrow and then maybe the Arboretum and I said well no I promised the guys I was going to play a video game with them all weekend and she said that sounds like fun can I come too and then I didn't answer for a second and then she said well do you not want me to come and then I bought her a new laptop in the game and she's parking the car right now is the whip sound app contextually appropriate here it is but I think you might have waited too long for it to be funny was wrong it's still funny",
+      "formatted_start": "20:26",
+      "formatted_end": "21:17"
+    },
+    {
+      "chunk_id": "C30",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1272.36,
+      "end_sec": 1320.64,
+      "text": "funny was wrong it's still funny good get that guy get that guy Dr roson cowsky it may interest you to know saying pew pew pew isn't as effective as pressing your blaster key in the same way that saying we doesn't make the land speeder go Raj Imperial troopers on your tail got him when Gandhi advocated his philosophy of nonviolence I bet he didn't know how much fun it was killing stuff all right I think we got them all let's divide up the loop ooh look at",
+      "formatted_start": "21:12",
+      "formatted_end": "22:01"
+    },
+    {
+      "chunk_id": "C31",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1313.52,
+      "end_sec": 1362.08,
+      "text": "stuff all right I think we got them all let's divide up the loop ooh look at this pretty purple robe I just got you should put on yours and them all match but I worked hard to get this armor sorry I just thought it'd be nice if people knew we were a couple fine I'll [Music] [Applause] change this may be the rum talking but as long as the unpinning rate of the vortices is kept with in 1.1 and 1.3 the Magnus Force issue should be negligible even drunk he still smarter than all of",
+      "formatted_start": "21:54",
+      "formatted_end": "22:42"
+    },
+    {
+      "chunk_id": "C32",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1354.36,
+      "end_sec": 1410.44,
+      "text": "negligible even drunk he still smarter than all of us and stronger who wants to see me beat up the bartender I'd enjoy that nah she's a good kid oh Leonard he says Sheldon's drunk and they're going to do karaoke if we want to join them that sounds fun oh no Sheldon's drunk texting me what's it say would you like to sing karaoke with us how is that a drunk text well he used a period instead of a question mark he's so [Laughter] wasted excuse me I'm meeting a girl here it's kind of a first date in a library",
+      "formatted_start": "22:34",
+      "formatted_end": "23:30"
+    },
+    {
+      "chunk_id": "C33",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1410.92,
+      "end_sec": 1459.68,
+      "text": "she and I are both a little awkward in social situations so they seemed like a good idea people say I'm a little awkward too may I join you no you can't join us just go climb back up whatever Bean stalk you came down from you can do better oh we're eating here we're having a texting date I love",
+      "formatted_start": "23:31",
+      "formatted_end": "24:20"
+    },
+    {
+      "chunk_id": "C34",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1455.88,
+      "end_sec": 1502.92,
+      "text": "date I love that as you're reading it will help you remember I have an adorable accent Amy Amy Amy will you marry me one moment please really you're going to answer that right now what Len I don't want to be",
+      "formatted_start": "24:16",
+      "formatted_end": "25:03"
+    },
+    {
+      "chunk_id": "C35",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1496.2,
+      "end_sec": 1543.52,
+      "text": "that right now what Len I don't want to be rude hello oh hey where you been we've been calling you for hours oh I'm sorry my phone was on airplane mode why because I was on an airplane hey put him on speaker hey where are you I came to Princeton to see Amy it's a funny story actually I was having lunch with Dr Nowitzki and she kissed me excuse me I'm sorry and in that moment I realized that Amy was the only woman I ever wanted to kiss for the rest of my life so I came to New Jersey to ask her to marry me oh that's so sweet Sheldon yeah although",
+      "formatted_start": "24:56",
+      "formatted_end": "25:44"
+    },
+    {
+      "chunk_id": "C36",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1541.64,
+      "end_sec": 1588.96,
+      "text": "there was one man whose blessing I needed first I've thought about it and I really want to spend the rest of my life with Amy do I have your blessing well Sheldon I think should make her finger like Saturn and put a ring on it you asked Stephen Hawking and not her father Stephen Hawking's a genius if he said no I wasn't going to waste my time on her father but you did ask my father I did he said yes although not in a robot voice so it wasn't nearly as cool okay oh my God I can't believe you guys are engaged we're not engaged yet she's taking forever to answer because you're",
+      "formatted_start": "25:42",
+      "formatted_end": "26:29"
+    },
+    {
+      "chunk_id": "C37",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1583.12,
+      "end_sec": 1630.04,
+      "text": "engaged we're not engaged yet she's taking forever to answer because you're on the phone [Applause] we'll call you back she said yes congratulations should you really be sitting in shelden spot he's in Texas he'll never know wouldn't be so sure about that yeah he has a very sensitive butt but it's true once I saw him sit on a bunch of loose change and add it up have you heard from Howard I did his talk at NASA went great no Sheldon didn't Hackle him no in fact he was so well behaved how he bought him a buzz",
+      "formatted_start": "26:23",
+      "formatted_end": "27:10"
+    },
+    {
+      "chunk_id": "C38",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1623.28,
+      "end_sec": 1675.08,
+      "text": "didn't Hackle him no in fact he was so well behaved how he bought him a buzz aldrum bobblehead and Astronaut ice cream hey guysart how's it going good shon's out of town so we can do whatever we want we even ordered from the thigh place he doesn't like how is it disgusting do not tell him what do you guys want to do tonight I don't know well I told Howie if I wasn't busy I'd spend the night at his mom so for God's sake think of something steart are you okay no I don't feel so Stuart oh my God you guys do something call 911 it's too late what do you mean it's too late he's been murdered by someone in this",
+      "formatted_start": "27:03",
+      "formatted_end": "27:55"
+    },
+    {
+      "chunk_id": "C39",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1670.2,
+      "end_sec": 1721.28,
+      "text": "room oh my come on welcome to another classic Kali Murder Mystery Dinner I'm leaving you can't leave you're a suspect in the mysterious murder of Stuart blue I didn't know his last name was Bloom yeah it's Bloom you really going to lie on the floor and pretend to be dead all night what do you think I was going to do at home I took the liberty of adapting a Star Trek fanfiction Nolla I wrote when I was 10 into a one-act play and you think it's better than Tennessee Williams why don't we leave that for future generations to decide we no Sheldon has gone",
+      "formatted_start": "27:50",
+      "formatted_end": "28:41"
+    },
+    {
+      "chunk_id": "C40",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1718.16,
+      "end_sec": 1765.4,
+      "text": "before it's the story of a young boy who is transported from the ignorant Backwoods of East Texas to the 23rd Century where his genius is not only appreciated but celebrated kmn now in this pivotal scene Sheldon's mother play by you argues with an emissary of the United Federation of planets Mr Spock the role I will bring to life okay that's fine but let's try and get you out of your comfort zone why would we want to do that it's called the comfort zone for a reason okay the whole point of this is to loosen you up a little so I'm thinking you'll play the role of your",
+      "formatted_start": "28:38",
+      "formatted_end": "29:25"
+    },
+    {
+      "chunk_id": "C41",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1760.12,
+      "end_sec": 1808.72,
+      "text": "mother and I will bring life to Mr Spock I'm sorry you'll be Spock it's only logical very well I'll set the scene all right East Texas a warm summer night a woman Mary stands on a porch in the distance we hear a lonesome train whistle woo woo the droning Buzz of cicas a coyote howls at the Moon frightening sensitive young boys everywhere out in the woods an owl",
+      "formatted_start": "29:20",
+      "formatted_end": "30:09"
+    },
+    {
+      "chunk_id": "C42",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1807.0,
+      "end_sec": 1853.16,
+      "text": "screeches okay okay we get it you set the scene who right just read your mother's line Shelly Shelly how many times have I told you not to leave your sciency stuff out on the porch goodness I'll never understand that boy but then again I'm a religious nut and my mind is closed to so many things Spock to Enterprise transport successful glory be to Heaven some sort of creature just manifested out of thin air George put down that Pepsi can Full",
+      "formatted_start": "30:07",
+      "formatted_end": "30:53"
+    },
+    {
+      "chunk_id": "C43",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1846.2,
+      "end_sec": 1895.2,
+      "text": "of creature just manifested out of thin air George put down that Pepsi can Full of Bourbon that ain't fooling no one and get your shotgun greetings Mary Cooper I'm I am spuck I'm sorry I just don't buy it just keep going oh my your sudden appearance startles me we have been monitoring your son Sheldon from the 23rd century and we have determined that he is now ready to join us his unique genius is our best hope for bringing peace to a vast and troubled Galaxy I understand oh shell a man's here to take you away to the Future it'll be sure to Pat clean",
+      "formatted_start": "30:46",
+      "formatted_end": "31:35"
+    },
+    {
+      "chunk_id": "C44",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1888.92,
+      "end_sec": 1935.8,
+      "text": "you away to the Future it'll be sure to Pat clean underwear okay okay let's try that last line again and this time maybe try choking up a little why well you're losing your son yes but he's going to a better place where he won't get beat up so much all right come on just try it my way pretend you're sad to see him go I'm going to lead you in his unique genius is our best hope for bringing peace to a vast and troubled Galaxy that's your cute I'm sorry I just love that line even the way you do it all right come on come on put some real emotion to it blah blah blah blah vast and troubled Galaxy",
+      "formatted_start": "31:29",
+      "formatted_end": "32:16"
+    },
+    {
+      "chunk_id": "C45",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1927.92,
+      "end_sec": 1983.0,
+      "text": "real emotion to it blah blah blah blah vast and troubled Galaxy go oh Shelly a man's here to take you away to the Future be sure to pet clean underwear that's good that's good that's good Mommy why are you crying well cuz I'm going to miss you Shelly Bean even though you creep the be Jesus out of me okay I guess we're improvising now well I'm sorry it's not my fault I'm just incredibly smart and everyone around here is dumber than a bag of rocks oh now don't you start crying you get in that spaceship mommy's late for Indi and bingo Mrs Cooper hey it's Penny yeah I think I broke your son",
+      "formatted_start": "32:08",
+      "formatted_end": "33:03"
+    },
+    {
+      "chunk_id": "C46",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 1979.0,
+      "end_sec": 2024.36,
+      "text": "hold on talk to your mother Mommy I love you don't let SP take me to the Future hi Hey listen since we got you know interrupted last night I didn't have a chance to give you this oh Leonard you shouldn't have oh boy what is it it's a snowflake from the North Pole are you serious it'll last forever I preserved it in a 1% solution of polyvinyl acial resin oh my God that's the most romantic thing anyone's ever said to me that I",
+      "formatted_start": "32:59",
+      "formatted_end": "33:44"
+    },
+    {
+      "chunk_id": "C47",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2018.48,
+      "end_sec": 2069.32,
+      "text": "resin oh my God that's the most romantic thing anyone's ever said to me that I didn't understand it's actually a pretty simple process you see Sino acrylates are monomers which polymerize them alert Sheldon ran away man I cannot catch a break so how do you know he ran away well he's not answering his phone he handed in his resignation at the University and he sent me a text that said I'm running away okay well thanks for letting me know Leonard aren't you going to do something uh what of course I'm going to do something uh Howard you check the comic book store Raj go to the Thai restaurant I'll stay here with penny in her apartment oh damn it it's Sheldon's",
+      "formatted_start": "33:38",
+      "formatted_end": "34:29"
+    },
+    {
+      "chunk_id": "C48",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2066.4,
+      "end_sec": 2119.32,
+      "text": "mother a break cannot be caught hi Mrs Cooper he is Sheldon went home to Texas yeah no I know he resigned yes I I guess it kind of is our fault no no no you're you're right someone needs to come talk to him don't worry I'll take care of it yeah all right new plan Howard you and Raj go to Texas I'll stay here with penny in her apartment but you're you're not going to go with some well you know I gave you the Snowflake and we were kissing and come on I don't want to go to Texas oh right and I do my people already crossed the desert once we're done trust me you'll be fine see you wait a second Leonard come on how can",
+      "formatted_start": "34:26",
+      "formatted_end": "35:19"
+    },
+    {
+      "chunk_id": "C49",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2112.24,
+      "end_sec": 2167.92,
+      "text": "done trust me you'll be fine see you wait a second Leonard come on how can you not go he's your best friend well well I already saw him naked just come here I promise I will be here when you get back just go help Sheldon really yeah we waited a few months we can wait a few more days maybe you can go boy you cannot catch a break can you how about that I finally caught a break uh-huh you know how they say when friends have sex it can get weird",
+      "formatted_start": "35:12",
+      "formatted_end": "36:08"
+    },
+    {
+      "chunk_id": "C50",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2164.28,
+      "end_sec": 2209.56,
+      "text": "sure why does it have to get weird I don't know I mean we were friends and now we're more than friends and we're whatever this is but why label it right I mean it is what it is and Leonard yeah it's weird totally the pastrami truck moved that is the danger of a restaurant on Wheels no apparently someone complained to the tenants Association they're not allowed to park on our street anymore who would complain about something that everyone loves uh did you complain to the tenants",
+      "formatted_start": "36:04",
+      "formatted_end": "36:50"
+    },
+    {
+      "chunk_id": "C51",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2205.72,
+      "end_sec": 2256.6,
+      "text": "Association about the food truck yes what they actually took you seriously oh the tenants association takes every complaint seriously oh great because I'm about to send them an email complaining about you excuse me wow someone should have spell checked what is going on here you're the tenants Association you should see the look on your face you might want to tell your wife that there's no why in pastrami so let me get this straight you are the president of the tenants Association",
+      "formatted_start": "36:46",
+      "formatted_end": "37:37"
+    },
+    {
+      "chunk_id": "C52",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2249.0,
+      "end_sec": 2296.4,
+      "text": "so let me get this straight you are the president of the tenants Association that president only member and harshest critic I once gave myself an official reprimand for conducting a meeting in the shower the steam warped my gaav okay so when I got a fine for leaving my clothes in the dryer for too long that was from you $4.99 the exact price of a new gaav and the noise we got for singing you happy birthday as a friend I was touched as a representative of the building I thought that you should pick a key and stick with it hi do you know he is the entire tenants Association no but I'm not",
+      "formatted_start": "37:29",
+      "formatted_end": "38:16"
+    },
+    {
+      "chunk_id": "C53",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2288.76,
+      "end_sec": 2337.24,
+      "text": "it hi do you know he is the entire tenants Association no but I'm not surprised he's also the pope of a planet he invented in hyperspace he why didn't you tell me I I wanted to make sure that you love the man not the office you can't just declare yourself president I didn't I called a meeting I was the only one to attend I nominated myself and after a pretty moving speech I voted myself in well if you can vote yourself in then we can vote you out yeah fine make a motion to the next meeting when is that it's the first Saturday of every month unless there's an emergency meeting then we call an emergency meeting well you really don't have to this is the first Saturday of the month okay fine then we vote you out",
+      "formatted_start": "38:09",
+      "formatted_end": "38:57"
+    },
+    {
+      "chunk_id": "C54",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2330.04,
+      "end_sec": 2383.12,
+      "text": "Saturday of the month okay fine then we vote you out hold on hold on first we have to read the the minutes from last month's meeting Amy would you do the honors why not Saturday March 3rd 7:05 meeting called to order 7:06 president gets shampoo in I 707 meeting adjourned okay can we vote you out now ah very well new business I move for a vote of no confidence in the president yeah two to one you lose get not so fast I believe we have one tenant here who has not made her voice heard oh we're waiting",
+      "formatted_start": "38:50",
+      "formatted_end": "39:43"
+    },
+    {
+      "chunk_id": "C55",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2379.4,
+      "end_sec": 2429.32,
+      "text": "fiance yeah we're waiting best friend yeah we're waiting neighbor who needed a battery and totally got one for me no strings attached I don't want to be in the middle of this no matter which way I vote I'm either a bad friend aad fiance or an ungrateful recipient of a battery next time I have a meeting in the shower you're welcome to attend Sheldon Sheldon for president I picked Sheldon Raj and Howard are at Howard's mom's but should we call the girls and see if they want to come no Bernadette's working late Amy's sick oh what's wrong with her well she talks a lot she always wants to hold hands that's not what I meant well if you were referring to her illness your question should have been what ails",
+      "formatted_start": "39:39",
+      "formatted_end": "40:29"
+    },
+    {
+      "chunk_id": "C56",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2424.76,
+      "end_sec": 2472.32,
+      "text": "her what ails her oh who knows come on anything can happen we can push him down the stairs so we're just randomly choosing a restaurant without researching it online yep great this is how Anything Can Happen Thursday turns into it won't stop coming out Friday what the hell what she's not working late and Amy doesn't look sick why would they lie to us it's a good question Amy and bernardette Amy and bernardette why did you lie to us you're not working late why did you lie to me and Amy you told me you were",
+      "formatted_start": "40:25",
+      "formatted_end": "41:12"
+    },
+    {
+      "chunk_id": "C57",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2465.04,
+      "end_sec": 2511.08,
+      "text": "us you're not working late why did you lie to me and Amy you told me you were sick but you look just as pale and tired as always I'm sorry I just needed a break from hearing you obsessed about what to do after String Theory we kind of just wanted one night where we didn't have to hear about how miserable you are making this movie but none of that means we don't love you I haven't been complaining that much about the movie have I I also love you you know what maybe I need a break from all of you come on Sheldon where are we going we're going to have anything can happen Thursday you're going to tell me all about your science stuff and I'm going to complain about my",
+      "formatted_start": "41:05",
+      "formatted_end": "41:51"
+    },
+    {
+      "chunk_id": "C58",
+      "video_id": "GvrIe41E7xA",
+      "start_sec": 2505.0,
+      "end_sec": 2533.43,
+      "text": "are we going we're going to have anything can happen Thursday you're going to tell me all about your science stuff and I'm going to complain about my movie and we're going to support each other because that's what friends do okay cuz if I had to pick now I'd probably go with dark matter oh [Applause] [Music]",
+      "formatted_start": "41:45",
+      "formatted_end": "42:13"
+    }
+  ]
+}

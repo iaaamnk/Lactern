@@ -1,0 +1,15 @@
+{
+  "video_id": "jNQXAC9IVRw",
+  "model_name": "pure-tfidf-ngram-v1",
+  "chunks": [
+    {
+      "chunk_id": "C1",
+      "video_id": "jNQXAC9IVRw",
+      "start_sec": 1.2,
+      "end_sec": 18.88,
+      "text": "All right, so here we are, in front of the elephants the cool thing about these guys is that they have really... really really long trunks and that's cool (baaaaaaaaaaahhh!!) and that's pretty much all there is to say",
+      "formatted_start": "00:01",
+      "formatted_end": "00:19"
+    }
+  ]
+}

@@ -102,6 +102,37 @@ body {
   width: 100%;
 }
 
+.demo-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+
+.demo-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-right: 2px;
+}
+
+.demo-chip {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: #93c5fd;
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-chip:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #60a5fa;
+  color: white;
+}
+
 .manual-transcript-drawer {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
