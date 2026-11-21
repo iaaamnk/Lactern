@@ -191,6 +191,22 @@ class FaissVectorIndex:
             return ranked_scores, ranked_indices
 
 
+_GLOBAL_ST_MODEL = None
+
+
+def get_shared_sentence_transformer(model_name: str = "all-MiniLM-L6-v2"):
+    """Singleton getter for SentenceTransformer to avoid re-downloading/re-instantiating on every store."""
+    global _GLOBAL_ST_MODEL
+    if _GLOBAL_ST_MODEL is not None:
+        return _GLOBAL_ST_MODEL
+    try:
+        from sentence_transformers import SentenceTransformer
+        _GLOBAL_ST_MODEL = SentenceTransformer(model_name)
+        return _GLOBAL_ST_MODEL
+    except Exception:
+        return None
+
+
 class EmbeddingProvider:
     """
     Semantic & Dense Embedding provider for both chunks and queries.
@@ -200,18 +216,11 @@ class EmbeddingProvider:
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
-        self._st_model = None
-        self._tfidf: Optional[PureTfidfVectorizer] = None
-        self.dimension = 384
-        self._init_model()
-
-    def _init_model(self):
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._st_model = SentenceTransformer(self.model_name)
+        self._st_model = get_shared_sentence_transformer(model_name)
+        if self._st_model is not None:
+            self._tfidf = None
             self.dimension = 384
-        except Exception:
-            self._st_model = None
+        else:
             self._tfidf = PureTfidfVectorizer(min_df=1)
             self.dimension = 0
 

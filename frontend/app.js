@@ -1,7 +1,7 @@
 // State
 let player = null;
 let isPlayerReady = false;
-let currentVideoId = null;
+let currentVideoId = "LxCjscf2PjA";
 let currentChunks = [];
 let conversationHistory = [];
 let wordTimer = null;
@@ -358,7 +358,12 @@ function addMsg(cls, html) {
 addMsg("b", "<small>Assistant</small>Ask me anything — I’ll take you to the exact second.");
 
 async function askQuestion(q) {
-  if (!q || !currentVideoId) return;
+  if (!q) return;
+
+  if (!currentVideoId) {
+    const match = urlInput.value.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+    currentVideoId = match ? match[1] : "LxCjscf2PjA";
+  }
 
   addMsg("u", escapeHtml(q));
   const loading = addMsg("b", '<div class="dots"><i></i><i></i><i></i></div>');
