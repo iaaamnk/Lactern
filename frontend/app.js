@@ -64,6 +64,8 @@ function onYouTubeIframeAPIReady() {
       playsinline: 1,
       modestbranding: 1,
       rel: 0,
+      enablejsapi: 1,
+      origin: window.location.origin,
     },
     events: {
       onReady: onPlayerReady,
@@ -158,12 +160,28 @@ function updateChipStates() {
 
 // 2. Clickable Timestamp Jump Function (Phase 7 Done Condition)
 window.seekToTimestamp = function (seekSec, originalStartSec) {
+  // If video embedding is blocked by owner (e.g. MasterChef / TV networks)
+  if (!playerFallback.classList.contains("hidden")) {
+    showFallbackLink(seekSec);
+    const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
+    window.open(watchUrl, "_blank");
+    
+    // Highlight transcript chunk
+    const matchingChunk = currentChunks.find((c) => Math.abs(c.start_sec - originalStartSec) < 1.0);
+    if (matchingChunk) {
+      const card = document.getElementById(`chunk-card-${matchingChunk.chunk_id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+    return;
+  }
+
   if (!isPlayerReady || !player) {
     alert("Player is still loading. Please wait a moment.");
     return;
   }
 
-  hideFallbackLink();
   try {
     // Safeguard: seek with 2-3s lead-in
     player.seekTo(seekSec, true);

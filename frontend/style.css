@@ -313,7 +313,18 @@ body {
 .fallback-card p {
   color: var(--text-secondary);
   font-size: 0.9rem;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+}
+
+.fallback-hint {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #bfdbfe !important;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem !important;
+  line-height: 1.4;
+  margin-bottom: 14px !important;
 }
 
 .player-controls-info {
