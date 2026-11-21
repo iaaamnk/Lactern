@@ -1,138 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Video RAG with Clickable Timestamps</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video RAG · Timestamp-Aware</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Top Bar -->
-    <header class="topbar">
-      <div class="brand">
-        <span class="logo-icon">▶</span>
-        <h1>YouTube Video RAG <span class="badge">Timestamp-Aware</span> <span class="badge version-badge">v1.4</span></h1>
-      </div>
-      <div class="ingest-bar-container">
-        <div class="ingest-bar">
-          <input 
-            type="text" 
-            id="video-url-input" 
-            placeholder="Paste YouTube URL or Video ID (e.g. https://www.youtube.com/watch?v=...)" 
-            value="https://www.youtube.com/watch?v=LxCjscf2PjA"
-          />
-          <button id="toggle-manual-transcript-btn" class="btn btn-secondary" title="Paste transcript directly (bypasses YouTube cloud rate limits)">
-            ✍ Paste Text
-          </button>
-          <button id="ingest-btn" class="btn btn-primary">
-            <span class="btn-text">Ingest & Index</span>
-            <span class="spinner hidden"></span>
-          </button>
-        </div>
-        <!-- Quick Demo Chips -->
-        <div class="demo-chips">
-          <span class="demo-label">⚡ Pre-Indexed Demos:</span>
-          <button type="button" class="demo-chip" data-vid="LxCjscf2PjA">MasterChef (LxCjscf2PjA)</button>
-          <button type="button" class="demo-chip" data-vid="0wp5Z3z4bjM">Indian Food (0wp5Z3z4bjM)</button>
-          <button type="button" class="demo-chip" data-vid="GvrIe41E7xA">Big Bang Theory (GvrIe41E7xA)</button>
-          <button type="button" class="demo-chip" data-vid="jNQXAC9IVRw">Me at the Zoo (jNQXAC9IVRw)</button>
-        </div>
-        <!-- Manual Transcript Drawer (optional fallback for 429 cloud blocks) -->
-        <div id="manual-transcript-drawer" class="manual-transcript-drawer hidden">
-          <div class="drawer-header">
-            <span>Manual Transcript / Notes Fallback (optional)</span>
-            <button id="close-drawer-btn" class="btn-icon" title="Close">✕</button>
-          </div>
-          <textarea 
-            id="manual-transcript-input" 
-            placeholder="Paste YouTube captions, transcript, or lecture notes here...&#10;Formats supported:&#10;• YouTube copied transcript (00:15 / text)&#10;• Timed lines: [01:23] Some text&#10;• VTT / SRT cues&#10;• Plain text / paragraphs (will be automatically chunked)"></textarea>
-        </div>
-      </div>
-    </header>
 
-    <!-- Ingestion Notification Banner -->
-    <div id="status-banner" class="status-banner hidden">
-      <span id="status-message">Ready</span>
+<nav>
+  <div class="logo">video<em>.</em>rag</div>
+  <div class="nav-r">
+    <span>Timestamp-aware</span>
+    <span>v1.4</span>
+    <span><i class="live"></i>Ready</span>
+  </div>
+</nav>
+
+<section class="hero">
+  <h1>Ask any video, <em>land on the exact second.</em></h1>
+  <div class="bar">
+    <input id="url" value="https://www.youtube.com/watch?v=LxCjscf2PjA" placeholder="Paste a YouTube link">
+    <button class="btn" id="toggle-drawer" type="button">Paste text</button>
+    <button class="btn solid" id="ingest" type="button">Ingest &amp; index</button>
+  </div>
+  
+  <div class="drawer hidden" id="drawer">
+    <div class="drawer-header">
+      <span>Manual Transcript / Notes Fallback (bypasses YouTube cloud rate limits)</span>
+      <button id="close-drawer" class="drawer-close" type="button">✕</button>
     </div>
-
-    <!-- Main Content Workspace -->
-    <main class="main-layout">
-      <!-- Left Panel: Player & Fallback & Transcript -->
-      <section class="player-panel">
-        <div class="video-container">
-          <div id="player"></div>
-          <div id="player-fallback" class="player-fallback hidden">
-            <div class="fallback-card">
-              <h3>Video Cannot Be Embedded (YouTube Error 150)</h3>
-              <p>The creator disabled third-party embedding for this video.</p>
-              <p class="fallback-hint">💡 <strong>AI RAG Chat is still 100% active!</strong> Ask any question in the chat below. Clicking any timestamp citation will jump directly to that exact scene on YouTube.</p>
-              <a id="fallback-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary">
-                Open on YouTube at Timestamp ↗
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="player-controls-info">
-          <div class="player-status">
-            <span class="status-dot" id="player-status-dot"></span>
-            <span id="player-status-text">Player Initializing...</span>
-          </div>
-          <div class="playback-timer">
-            <span id="current-time">00:00</span> / <span id="total-duration">--:--</span>
-          </div>
-        </div>
-
-        <!-- Transcript Viewer with auto-scroll -->
-        <div class="transcript-section">
-          <div class="section-header">
-            <h3>Indexed Transcript Chunks</h3>
-            <span id="chunk-counter" class="chunk-badge">0 chunks</span>
-          </div>
-          <div id="transcript-list" class="transcript-list">
-            <p class="empty-state">Ingest a video to view synchronized transcript chunks.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Right Panel: Q&A Chat -->
-      <section class="chat-panel">
-        <div class="chat-header">
-          <h2>Ask About This Video</h2>
-          <span class="rules-hint">LLM cites chunk IDs • Backend supplies verified timestamps</span>
-        </div>
-
-        <div id="chat-messages" class="chat-messages">
-          <div class="message assistant-msg">
-            <div class="msg-bubble">
-              <p>Welcome! Ingest any YouTube video above to index its transcript with time-aware chunks. Once indexed, you can ask questions and tap timestamp chips to jump directly to exact moments with a smooth lead-in.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Input Bar -->
-        <form id="chat-form" class="chat-input-area">
-          <input 
-            type="text" 
-            id="question-input" 
-            placeholder="Ask a question about the video..." 
-            autocomplete="off"
-            disabled
-          />
-          <button type="submit" id="send-btn" class="btn btn-send" disabled>
-            <span>Ask</span>
-          </button>
-        </form>
-      </section>
-    </main>
+    <textarea id="manual-text" placeholder="Paste YouTube transcript, timestamped notes [01:23], or lecture notes here..."></textarea>
   </div>
 
-  <!-- YouTube IFrame API Script -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="app.js"></script>
+  <div class="demos">Try
+    <a data-id="LxCjscf2PjA">MasterChef</a>
+    <a data-id="0wp5Z3z4bjM">Indian Food</a>
+    <a data-id="GvrIe41E7xA">Big Bang Theory</a>
+    <a data-id="jNQXAC9IVRw">Me at the Zoo</a>
+  </div>
+  <div class="status" id="status"><b>●</b> Ready to index</div>
+</section>
+
+<main>
+  <div>
+    <div class="player" id="player">
+      <div id="yt-player"></div>
+      <div class="play" id="play" title="Play Video">
+        <svg viewBox="0 0 24 24"><path d="M5 3l15 9-15 9z"/></svg>
+      </div>
+      <div class="caption" id="caption"></div>
+      
+      <!-- YouTube Error 150 Fallback (embedding disabled by owner) -->
+      <div class="player-fallback hidden" id="player-fallback">
+        <h3>Video Cannot Be Embedded</h3>
+        <p>The creator disabled third-party embedding. AI RAG is still active! Clicking any citation timestamp will jump directly to that scene on YouTube.</p>
+        <a id="fallback-link" href="#" target="_blank" rel="noopener" class="btn solid">Open on YouTube at Timestamp ↗</a>
+      </div>
+    </div>
+    
+    <div class="track" id="track"><div class="fill" id="fill"></div></div>
+    <div class="meta">
+      <span id="player-status">Player ready</span>
+      <span id="clock">00:00 / 00:00</span>
+    </div>
+
+    <div class="sec-title">
+      <h2>Transcript</h2>
+      <span id="chunk-count">0 chunks</span>
+    </div>
+    <div id="list"></div>
+  </div>
+
+  <aside class="chat">
+    <div class="chat-h">
+      <h2>Ask <em>this</em> video</h2>
+      <p>LLM cites chunk IDs · backend supplies verified timestamps</p>
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="sug" id="sug"></div>
+    <form class="ask" id="form">
+      <input id="q" placeholder="Ask a question…" autocomplete="off" disabled>
+      <button type="submit" id="send-btn" disabled>→</button>
+    </form>
+  </aside>
+</main>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="app.js"></script>
 </body>
 </html>

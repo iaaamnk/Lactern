@@ -4,62 +4,50 @@ let isPlayerReady = false;
 let currentVideoId = null;
 let currentChunks = [];
 let conversationHistory = [];
+let wordTimer = null;
+let progressTimer = null;
+let currentChunkIndex = -1;
 
-const statusBanner = document.getElementById("status-banner");
-const statusMessage = document.getElementById("status-message");
-const playerStatusDot = document.getElementById("player-status-dot");
-const playerStatusText = document.getElementById("player-status-text");
-const currentTimeDisplay = document.getElementById("current-time");
-const totalDurationDisplay = document.getElementById("total-duration");
-const playerFallback = document.getElementById("player-fallback");
-const fallbackLink = document.getElementById("fallback-link");
-const transcriptList = document.getElementById("transcript-list");
-const chunkCounter = document.getElementById("chunk-counter");
+// DOM Elements
+const $ = (id) => document.getElementById(id);
+const urlInput = $("url");
+const ingestBtn = $("ingest");
+const toggleDrawerBtn = $("toggle-drawer");
+const drawer = $("drawer");
+const closeDrawerBtn = $("close-drawer");
+const manualTextInput = $("manual-text");
+const statusEl = $("status");
+const playerContainer = $("player");
+const playBtn = $("play");
+const captionEl = $("caption");
+const playerFallback = $("player-fallback");
+const fallbackLink = $("fallback-link");
+const trackEl = $("track");
+const fillEl = $("fill");
+const playerStatus = $("player-status");
+const clockEl = $("clock");
+const chunkCountEl = $("chunk-count");
+const listEl = $("list");
+const msgsEl = $("msgs");
+const sugEl = $("sug");
+const chatForm = $("form");
+const questionInput = $("q");
+const sendBtn = $("send-btn");
 
-const videoUrlInput = document.getElementById("video-url-input");
-const ingestBtn = document.getElementById("ingest-btn");
-const toggleManualTranscriptBtn = document.getElementById("toggle-manual-transcript-btn");
-const manualTranscriptDrawer = document.getElementById("manual-transcript-drawer");
-const closeDrawerBtn = document.getElementById("close-drawer-btn");
-const manualTranscriptInput = document.getElementById("manual-transcript-input");
-const questionInput = document.getElementById("question-input");
-const sendBtn = document.getElementById("send-btn");
-const chatMessages = document.getElementById("chat-messages");
-const chatForm = document.getElementById("chat-form");
-
-if (toggleManualTranscriptBtn) {
-  toggleManualTranscriptBtn.addEventListener("click", () => {
-    manualTranscriptDrawer.classList.toggle("hidden");
-    if (!manualTranscriptDrawer.classList.contains("hidden")) {
-      manualTranscriptInput.focus();
-    }
-  });
+// Formatting helper: seconds -> mm:ss
+function fmt(seconds) {
+  const s = Math.max(0, Math.floor(seconds || 0));
+  const mins = Math.floor(s / 60);
+  const secs = s % 60;
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-if (closeDrawerBtn) {
-  closeDrawerBtn.addEventListener("click", () => {
-    manualTranscriptDrawer.classList.add("hidden");
-  });
-}
-
-// Demo chips click handler
-document.querySelectorAll(".demo-chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    const vid = chip.getAttribute("data-vid");
-    if (vid) {
-      videoUrlInput.value = `https://www.youtube.com/watch?v=${vid}`;
-      ingestBtn.click();
-    }
-  });
-});
-
-// 1. YouTube IFrame API Initialization
+// 1. YouTube IFrame API
 function onYouTubeIframeAPIReady() {
-  console.log("YouTube IFrame API loaded.");
-  player = new YT.Player("player", {
+  player = new YT.Player("yt-player", {
     height: "100%",
     width: "100%",
-    videoId: "jNQXAC9IVRw", // Default placeholder
+    videoId: "LxCjscf2PjA", // Default starter video
     playerVars: {
       playsinline: 1,
       modestbranding: 1,
@@ -77,145 +65,184 @@ function onYouTubeIframeAPIReady() {
 
 function onPlayerReady(event) {
   isPlayerReady = true;
-  playerStatusDot.classList.add("ready");
-  playerStatusText.textContent = "Player Ready";
-  updatePlaybackTimer();
-  updateChipStates();
-  setInterval(trackPlaybackProgress, 500);
-}
+  playerStatus.textContent = "Player ready";
+  updateClock();
+  clearInterval(progressTimer);
+  progressTimer = setInterval(updatePlaybackState, 400);
 
-function onPlayerStateChange(event) {
-  updatePlaybackTimer();
-}
-
-function onPlayerError(event) {
-  console.warn("YouTube Player error:", event.data);
-  // Errors 101 or 150 mean embedding was disabled by video owner
-  if (event.data === 101 || event.data === 150) {
-    showFallbackLink(0);
+  // Trigger default initial video ingestion in background
+  if (!currentVideoId && urlInput.value) {
+    ingestVideo();
   }
 }
 
-function showFallbackLink(seconds) {
+function onPlayerStateChange(event) {
+  updateClock();
+  if (event.data === YT.PlayerState.PLAYING) {
+    playerContainer.classList.add("playing");
+  } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+    playerContainer.classList.remove("playing");
+  }
+}
+
+function onPlayerError(event) {
+  console.warn("YouTube Player event error:", event.data);
+  // Errors 101 or 150: embedding disabled by video owner
+  if (event.data === 101 || event.data === 150) {
+    showFallback(0);
+  }
+}
+
+function showFallback(seekSec) {
   if (!currentVideoId) return;
-  const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seconds)}s`;
+  const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
   fallbackLink.href = watchUrl;
   playerFallback.classList.remove("hidden");
 }
 
-function hideFallbackLink() {
+function hideFallback() {
   playerFallback.classList.add("hidden");
 }
 
-function formatSeconds(seconds) {
-  const s = Math.max(0, Math.floor(seconds || 0));
-  const mins = Math.floor(s / 60);
-  const secs = s % 60;
-  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-}
-
-function updatePlaybackTimer() {
-  if (player && player.getDuration) {
-    const dur = player.getDuration();
-    if (dur > 0) {
-      totalDurationDisplay.textContent = formatSeconds(dur);
-    }
+// Play button click overlay
+playBtn.onclick = () => {
+  if (player && player.playVideo) {
+    player.playVideo();
+    playerContainer.classList.add("playing");
   }
+};
+
+// 2. Playback Tracker & Karaoke Captions
+function updateClock() {
+  if (!player || !player.getDuration) return;
+  try {
+    const cur = player.getCurrentTime ? player.getCurrentTime() : 0;
+    const dur = player.getDuration() || 0;
+    clockEl.textContent = `${fmt(cur)} / ${fmt(dur)}`;
+    if (dur > 0) {
+      fillEl.style.width = `${Math.min(100, (cur / dur) * 100)}%`;
+    }
+  } catch (e) {}
 }
 
-function trackPlaybackProgress() {
+function updatePlaybackState() {
   if (!isPlayerReady || !player || !player.getCurrentTime) return;
   try {
-    const curr = player.getCurrentTime();
-    currentTimeDisplay.textContent = formatSeconds(curr);
+    const cur = player.getCurrentTime();
+    updateClock();
 
-    // Highlight current active chunk in transcript
-    if (currentChunks.length > 0) {
-      currentChunks.forEach((c) => {
-        const el = document.getElementById(`chunk-card-${c.chunk_id}`);
-        if (el) {
-          if (curr >= c.start_sec && curr <= c.end_sec) {
-            el.classList.add("active");
-          } else {
-            el.classList.remove("active");
-          }
-        }
-      });
+    if (currentChunks.length === 0) return;
+
+    // Detect active chunk
+    let activeIdx = -1;
+    for (let i = 0; i < currentChunks.length; i++) {
+      if (cur >= currentChunks[i].start_sec && cur <= currentChunks[i].end_sec) {
+        activeIdx = i;
+        break;
+      }
     }
-  } catch (e) {
-    // Player might be switching videos
-  }
+
+    if (activeIdx !== -1 && activeIdx !== currentChunkIndex) {
+      currentChunkIndex = activeIdx;
+      highlightChunk(activeIdx, false);
+      showKaraokeCaption(activeIdx);
+    }
+  } catch (e) {}
 }
 
-function updateChipStates() {
-  const chips = document.querySelectorAll(".timestamp-chip");
-  chips.forEach((chip) => {
-    if (isPlayerReady) {
-      chip.classList.remove("disabled");
+function showKaraokeCaption(idx) {
+  if (!currentChunks[idx]) return;
+  clearInterval(wordTimer);
+  const text = currentChunks[idx].text;
+  const words = text.split(" ");
+  captionEl.innerHTML = `<div>${words.map((w) => `<span>${escapeHtml(w)}</span>`).join(" ")}</div>`;
+  const spans = [...captionEl.querySelectorAll("span")];
+  let k = 0;
+  const tick = () => {
+    if (k > 0 && spans[k - 1]) spans[k - 1].classList.remove("hot");
+    if (k < spans.length) {
+      spans[k].classList.add("on", "hot");
+      k++;
     } else {
-      chip.classList.add("disabled");
+      clearInterval(wordTimer);
+    }
+  };
+  tick();
+  const wordInterval = Math.max(120, Math.min(320, Math.floor(4000 / (words.length || 1))));
+  wordTimer = setInterval(tick, wordInterval);
+}
+
+function highlightChunk(idx, scrollIntoView = true) {
+  document.querySelectorAll(".chunk").forEach((el, i) => {
+    if (i === idx) {
+      el.classList.add("on");
+      if (scrollIntoView) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    } else {
+      el.classList.remove("on");
     }
   });
 }
 
-// 2. Clickable Timestamp Jump Function (Phase 7 Done Condition)
+// 3. Seeking & Timeline
 window.seekToTimestamp = function (seekSec, originalStartSec) {
-  // If video embedding is blocked by owner (e.g. MasterChef / TV networks)
+  // If video owner disabled third-party embedding (Error 150)
   if (!playerFallback.classList.contains("hidden")) {
-    showFallbackLink(seekSec);
+    showFallback(seekSec);
     const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
     window.open(watchUrl, "_blank");
-    
-    // Highlight transcript chunk
-    const matchingChunk = currentChunks.find((c) => Math.abs(c.start_sec - originalStartSec) < 1.0);
-    if (matchingChunk) {
-      const card = document.getElementById(`chunk-card-${matchingChunk.chunk_id}`);
-      if (card) {
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
     return;
   }
 
   if (!isPlayerReady || !player) {
-    alert("Player is still loading. Please wait a moment.");
+    statusEl.innerHTML = `<b>●</b> Waiting for player to initialize…`;
     return;
   }
 
   try {
-    // Safeguard: seek with 2-3s lead-in
     player.seekTo(seekSec, true);
     player.playVideo();
+    playerContainer.classList.add("playing");
 
-    // Scroll active transcript item into view
-    const matchingChunk = currentChunks.find((c) => Math.abs(c.start_sec - originalStartSec) < 1.0);
-    if (matchingChunk) {
-      const card = document.getElementById(`chunk-card-${matchingChunk.chunk_id}`);
-      if (card) {
-        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
+    // Match chunk
+    const idx = currentChunks.findIndex(
+      (c) => Math.abs(c.start_sec - originalStartSec) < 1.5 || (seekSec >= c.start_sec && seekSec <= c.end_sec)
+    );
+    if (idx !== -1) {
+      currentChunkIndex = idx;
+      highlightChunk(idx, true);
+      showKaraokeCaption(idx);
     }
   } catch (err) {
-    console.error("seekTo failed:", err);
-    showFallbackLink(seekSec);
+    console.warn("seekTo error:", err);
+    showFallback(seekSec);
   }
 };
 
-// 3. Ingestion Flow
-ingestBtn.addEventListener("click", async () => {
-  const url = videoUrlInput.value.trim();
+// Timeline track click to seek
+trackEl.onclick = (e) => {
+  if (!player || !player.getDuration) return;
+  const dur = player.getDuration();
+  if (!dur || dur <= 0) return;
+  const rect = trackEl.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const targetSec = ratio * dur;
+  seekToTimestamp(targetSec, targetSec);
+};
+
+// 4. Ingestion Flow
+async function ingestVideo() {
+  const url = urlInput.value.trim();
   if (!url) return;
 
-  const transcriptText = manualTranscriptInput ? manualTranscriptInput.value.trim() : "";
-
-  setIngesting(true);
-  showStatus("Ingesting video captions and building time-aware chunks...", false);
+  const manualText = manualTextInput ? manualTextInput.value.trim() : "";
+  setIngestLoading(true);
+  statusEl.innerHTML = `<b>●</b> Indexing video transcript…`;
 
   try {
     const payload = { url };
-    if (transcriptText) {
-      payload.transcript_text = transcriptText;
-    }
+    if (manualText) payload.transcript_text = manualText;
 
     const resp = await fetch("/api/ingest", {
       method: "POST",
@@ -231,39 +258,37 @@ ingestBtn.addEventListener("click", async () => {
     const data = await resp.json();
     currentVideoId = data.video_id;
 
-    showStatus(`Video indexed successfully (${data.chunk_count} chunks). ${data.cached ? "[Cached]" : ""}`, false);
-    if (manualTranscriptDrawer) {
-      manualTranscriptDrawer.classList.add("hidden");
-    }
+    statusEl.className = "status";
+    statusEl.innerHTML = `<b>●</b> Video indexed successfully — ${data.chunk_count} chunks ${data.cached ? "[Cached]" : ""}`;
+    drawer.classList.add("hidden");
 
     // Load video in YouTube player
     if (player && player.cueVideoById) {
-      hideFallbackLink();
+      hideFallback();
       player.cueVideoById(currentVideoId);
     }
 
-    // Fetch chunks for transcript viewer
-    await loadTranscriptChunks(currentVideoId);
+    // Load transcript chunks
+    await loadChunks(currentVideoId);
 
     // Enable chat inputs
     questionInput.disabled = false;
     sendBtn.disabled = false;
     questionInput.focus();
-  } catch (err) {
-    showStatus(`Error: ${err.message}`, true);
-    // If rate-limited or Whisper failed, reveal manual transcript drawer automatically
-    if (manualTranscriptDrawer) {
-      manualTranscriptDrawer.classList.remove("hidden");
-      if (manualTranscriptInput) {
-        manualTranscriptInput.focus();
-      }
-    }
-  } finally {
-    setIngesting(false);
-  }
-});
 
-async function loadTranscriptChunks(videoId) {
+    // Populate suggested questions
+    updateSuggestions(currentVideoId);
+  } catch (err) {
+    statusEl.className = "status error";
+    statusEl.innerHTML = `<b>●</b> Error: ${escapeHtml(err.message)}`;
+    drawer.classList.remove("hidden");
+    manualTextInput.focus();
+  } finally {
+    setIngestLoading(false);
+  }
+}
+
+async function loadChunks(videoId) {
   try {
     const resp = await fetch(`/api/chunks/${videoId}`);
     if (!resp.ok) return;
@@ -275,36 +300,68 @@ async function loadTranscriptChunks(videoId) {
 }
 
 function renderTranscript() {
-  chunkCounter.textContent = `${currentChunks.length} chunks`;
+  chunkCountEl.textContent = `${currentChunks.length} chunks`;
+  listEl.innerHTML = "";
+  
+  // Clear existing notches on track
+  trackEl.querySelectorAll("i").forEach((el) => el.remove());
+
   if (!currentChunks.length) {
-    transcriptList.innerHTML = `<p class="empty-state">No chunks available.</p>`;
+    listEl.innerHTML = `<div style="padding: 24px 0; color: var(--mute); font-size: 14px;">No transcript chunks available.</div>`;
     return;
   }
 
-  transcriptList.innerHTML = currentChunks
-    .map(
-      (c) => `
-    <div id="chunk-card-${c.chunk_id}" class="transcript-card" onclick="seekToTimestamp(${Math.max(0, c.start_sec - 2.5)}, ${c.start_sec})">
-      <div class="chunk-meta">
-        <span class="chunk-time-tag">${c.chunk_id} • ${c.formatted_start} - ${c.formatted_end}</span>
-      </div>
-      <p class="chunk-text">${c.text}</p>
-    </div>
-  `
-    )
-    .join("");
+  const dur = (player && player.getDuration && player.getDuration()) || currentChunks[currentChunks.length - 1].end_sec || 300;
+
+  currentChunks.forEach((c, i) => {
+    const item = document.createElement("div");
+    item.className = "chunk";
+    item.dataset.i = i;
+    item.innerHTML = `<div class="t">${c.formatted_start}</div><p>${escapeHtml(c.text)}</p>`;
+    item.onclick = () => {
+      currentChunkIndex = i;
+      highlightChunk(i, false);
+      seekToTimestamp(Math.max(0, c.start_sec - 2.5), c.start_sec);
+    };
+    listEl.appendChild(item);
+
+    // Track notch
+    if (dur > 0) {
+      const notch = document.createElement("i");
+      notch.style.left = `${Math.min(100, (c.start_sec / dur) * 100)}%`;
+      trackEl.appendChild(notch);
+    }
+  });
+
+  // Display initial caption
+  if (currentChunks.length > 0) {
+    showKaraokeCaption(0);
+  }
 }
 
-// 4. Q&A Ask Flow
-chatForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const q = questionInput.value.trim();
+function setIngestLoading(isLoading) {
+  ingestBtn.disabled = isLoading;
+  ingestBtn.textContent = isLoading ? "Indexing…" : "Ingest & index";
+}
+
+// 5. Chat Flow
+function addMsg(cls, html) {
+  const m = document.createElement("div");
+  m.className = "m " + cls;
+  m.innerHTML = html;
+  msgsEl.appendChild(m);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  return m;
+}
+
+// Initial welcome message
+addMsg("b", "<small>Assistant</small>Ask me anything — I’ll take you to the exact second.");
+
+async function askQuestion(q) {
   if (!q || !currentVideoId) return;
 
-  questionInput.value = "";
-  appendUserMessage(q);
-
-  const loadingMsgId = appendAssistantLoading();
+  addMsg("u", escapeHtml(q));
+  const loading = addMsg("b", '<div class="dots"><i></i><i></i><i></i></div>');
 
   try {
     const resp = await fetch("/api/ask", {
@@ -323,88 +380,88 @@ chatForm.addEventListener("submit", async (e) => {
     }
 
     const data = await resp.json();
-    replaceLoadingWithAnswer(loadingMsgId, data.answer, data.citations);
+    loading.remove();
 
+    let citationsHtml = "";
+    if (data.citations && data.citations.length > 0) {
+      citationsHtml = `
+        <div class="citations-wrap">
+          ${data.citations
+            .map(
+              (c) =>
+                `<button type="button" class="ts" title="${escapeHtml(c.snippet_preview)}" onclick="seekToTimestamp(${c.seek_sec}, ${c.start_sec})">${c.label} (${c.formatted_start})</button>`
+            )
+            .join("")}
+        </div>
+      `;
+    }
+
+    addMsg("b", `<small>According to the video</small>${escapeHtml(data.answer)}${citationsHtml}`);
     conversationHistory.push({ question: q, answer: data.answer });
   } catch (err) {
-    replaceLoadingWithError(loadingMsgId, err.message);
+    loading.remove();
+    addMsg("b", `<small>Error</small><span style="color:#ef4444;">${escapeHtml(err.message)}</span>`);
   }
+}
+
+chatForm.onsubmit = (e) => {
+  e.preventDefault();
+  const q = questionInput.value.trim();
+  if (q) {
+    questionInput.value = "";
+    askQuestion(q);
+  }
+};
+
+// 6. Suggestions Engine
+const SUGGESTIONS_MAP = {
+  LxCjscf2PjA: ["How does Gordon prepare the eggs?", "What is the secret with the butter?", "When should you season the eggs?"],
+  "0wp5Z3z4bjM": ["What is self-attention?", "How are query and key vectors computed?", "Why is softmax used in attention?"],
+  GvrIe41E7xA: ["What makes Python dynamic?", "What are decorators in Python?", "Who created Python?"],
+  jNQXAC9IVRw: ["What is cool about elephants?", "Where was the video filmed?", "What does the speaker say about trunks?"],
+};
+
+function updateSuggestions(vid) {
+  sugEl.innerHTML = "";
+  const suggestions = SUGGESTIONS_MAP[vid] || [
+    "What is the main topic?",
+    "Summarize the key points",
+    "Where is the conclusion?",
+  ];
+  suggestions.forEach((text) => {
+    const a = document.createElement("a");
+    a.textContent = text;
+    a.onclick = () => askQuestion(text);
+    sugEl.appendChild(a);
+  });
+}
+
+// 7. Demo Chips & Drawer Handlers
+document.querySelectorAll(".demos a").forEach((a) => {
+  a.onclick = () => {
+    const id = a.dataset.id;
+    if (id) {
+      urlInput.value = `https://www.youtube.com/watch?v=${id}`;
+      ingestVideo();
+    }
+  };
 });
 
-function appendUserMessage(text) {
-  const msg = document.createElement("div");
-  msg.className = "message user-msg";
-  msg.innerHTML = `<div class="msg-bubble"><p>${escapeHtml(text)}</p></div>`;
-  chatMessages.appendChild(msg);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function appendAssistantLoading() {
-  const id = `loading-${Date.now()}`;
-  const msg = document.createElement("div");
-  msg.id = id;
-  msg.className = "message assistant-msg";
-  msg.innerHTML = `<div class="msg-bubble"><p>Searching chunks and generating grounded answer...</p></div>`;
-  chatMessages.appendChild(msg);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  return id;
-}
-
-function replaceLoadingWithAnswer(loadingId, answerText, citations) {
-  const loadingEl = document.getElementById(loadingId);
-  if (!loadingEl) return;
-
-  let citationsHtml = "";
-  if (citations && citations.length > 0) {
-    citationsHtml = `
-      <div class="citation-container">
-        ${citations
-          .map(
-            (c) => `
-          <button 
-            type="button"
-            class="timestamp-chip ${isPlayerReady ? "" : "disabled"}" 
-            title="${escapeHtml(c.snippet_preview)}"
-            onclick="seekToTimestamp(${c.seek_sec}, ${c.start_sec})"
-          >
-            ${c.label}
-          </button>
-        `
-          )
-          .join("")}
-      </div>
-    `;
+toggleDrawerBtn.onclick = () => {
+  drawer.classList.toggle("hidden");
+  if (!drawer.classList.contains("hidden")) {
+    manualTextInput.focus();
   }
+};
 
-  loadingEl.innerHTML = `
-    <div class="msg-bubble">
-      <p>${escapeHtml(answerText)}</p>
-      ${citationsHtml}
-    </div>
-  `;
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+closeDrawerBtn.onclick = () => {
+  drawer.classList.add("hidden");
+};
 
-function replaceLoadingWithError(loadingId, errMsg) {
-  const loadingEl = document.getElementById(loadingId);
-  if (!loadingEl) return;
-  loadingEl.innerHTML = `<div class="msg-bubble"><p style="color: #f87171;">Error: ${escapeHtml(errMsg)}</p></div>`;
-}
-
-function showStatus(msg, isError) {
-  statusBanner.classList.remove("hidden");
-  statusBanner.className = isError ? "status-banner error" : "status-banner";
-  statusMessage.textContent = msg;
-}
-
-function setIngesting(loading) {
-  ingestBtn.disabled = loading;
-  const text = ingestBtn.querySelector(".btn-text");
-  if (text) text.textContent = loading ? "Indexing..." : "Ingest & Index";
-}
+ingestBtn.onclick = () => ingestVideo();
 
 function escapeHtml(str) {
   const div = document.createElement("div");
-  div.textContent = str;
+  div.textContent = str || "";
   return div.innerHTML;
 }
