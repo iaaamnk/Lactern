@@ -34,6 +34,16 @@ const chatForm = $("form");
 const questionInput = $("q");
 const sendBtn = $("send-btn");
 
+// Progress Bar DOM Elements
+const ingestProgress = $("ingest-progress");
+const progressStageText = $("progress-stage-text");
+const progressTimer = $("progress-timer");
+const progressBarFill = $("progress-bar-fill");
+const pstep1 = $("pstep-1");
+const pstep2 = $("pstep-2");
+const pstep3 = $("pstep-3");
+const progressHint = $("progress-hint");
+
 // Formatting helper: seconds -> mm:ss
 function fmt(seconds) {
   const s = Math.max(0, Math.floor(seconds || 0));
@@ -231,13 +241,81 @@ trackEl.onclick = (e) => {
   seekToTimestamp(targetSec, targetSec);
 };
 
-// 4. Ingestion Flow
+// 4. Ingestion Flow & Progress Animation
+let ingestTimerInterval = null;
+let ingestStartTime = 0;
+
+function startIngestProgress() {
+  if (ingestTimerInterval) clearInterval(ingestTimerInterval);
+  ingestStartTime = Date.now();
+  
+  if (ingestProgress) ingestProgress.classList.remove("hidden");
+  if (progressHint) progressHint.classList.add("hidden");
+  if (progressBarFill) progressBarFill.style.width = "12%";
+  if (progressTimer) progressTimer.textContent = "00:00";
+  if (progressStageText) progressStageText.textContent = "Connecting & extracting captions…";
+  
+  if (pstep1) pstep1.className = "p-step active";
+  if (pstep2) pstep2.className = "p-step";
+  if (pstep3) pstep3.className = "p-step";
+
+  ingestTimerInterval = setInterval(() => {
+    const elapsedSec = Math.floor((Date.now() - ingestStartTime) / 1000);
+    if (progressTimer) progressTimer.textContent = fmt(elapsedSec);
+
+    // Dynamic stage progression
+    if (elapsedSec >= 1 && elapsedSec < 3) {
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(45, 15 + elapsedSec * 10)}%`;
+    } else if (elapsedSec >= 3 && elapsedSec < 6) {
+      if (pstep1) pstep1.className = "p-step done";
+      if (pstep2) pstep2.className = "p-step active";
+      if (progressStageText) progressStageText.textContent = "Segmenting transcript into timestamped chunks…";
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(75, 45 + (elapsedSec - 3) * 10)}%`;
+    } else if (elapsedSec >= 6) {
+      if (pstep2) pstep2.className = "p-step done";
+      if (pstep3) pstep3.className = "p-step active";
+      if (progressStageText) progressStageText.textContent = "Computing semantic embeddings & indexing…";
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(94, 75 + (elapsedSec - 6) * 3)}%`;
+    }
+
+    // If waiting longer than 10 seconds, reveal helpful fallback hint
+    if (elapsedSec >= 10 && progressHint) {
+      progressHint.classList.remove("hidden");
+    }
+  }, 250);
+}
+
+function stopIngestProgress(success, chunkCount = 0) {
+  if (ingestTimerInterval) {
+    clearInterval(ingestTimerInterval);
+    ingestTimerInterval = null;
+  }
+  
+  if (success) {
+    const totalSec = ((Date.now() - ingestStartTime) / 1000).toFixed(1);
+    if (progressBarFill) progressBarFill.style.width = "100%";
+    if (pstep1) pstep1.className = "p-step done";
+    if (pstep2) pstep2.className = "p-step done";
+    if (pstep3) pstep3.className = "p-step done";
+    if (progressStageText) {
+      progressStageText.innerHTML = `✓ Indexed <b>${chunkCount} chunks</b> in ${totalSec}s!`;
+    }
+    setTimeout(() => {
+      if (ingestProgress) ingestProgress.classList.add("hidden");
+    }, 1500);
+  } else {
+    if (ingestProgress) ingestProgress.classList.add("hidden");
+  }
+}
+
 async function ingestVideo() {
   const url = urlInput.value.trim();
   if (!url) return;
 
   const manualText = manualTextInput ? manualTextInput.value.trim() : "";
   setIngestLoading(true);
+  startIngestProgress();
+  statusEl.className = "status";
   statusEl.innerHTML = `<b>●</b> Indexing video transcript…`;
 
   try {
@@ -251,7 +329,7 @@ async function ingestVideo() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
+      const err = await resp.json().catch(() => ({ detail: "Ingestion failed." }));
       throw new Error(err.detail || "Ingestion failed.");
     }
 
@@ -261,6 +339,8 @@ async function ingestVideo() {
     statusEl.className = "status";
     statusEl.innerHTML = `<b>●</b> Video indexed successfully — ${data.chunk_count} chunks ${data.cached ? "[Cached]" : ""}`;
     drawer.classList.add("hidden");
+
+    stopIngestProgress(true, data.chunk_count);
 
     // Load video in YouTube player
     hideFallback();
@@ -281,10 +361,11 @@ async function ingestVideo() {
     // Populate suggested questions
     updateSuggestions(currentVideoId);
   } catch (err) {
+    stopIngestProgress(false);
     statusEl.className = "status error";
-    statusEl.innerHTML = `<b>●</b> Error: ${escapeHtml(err.message)}`;
+    statusEl.innerHTML = `<b>●</b> ${escapeHtml(err.message)}`;
     drawer.classList.remove("hidden");
-    manualTextInput.focus();
+    if (manualTextInput) manualTextInput.focus();
   } finally {
     setIngestLoading(false);
   }

@@ -312,6 +312,7 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
+            "socket_timeout": 8,
             "extractor_args": {
                 "youtube": {
                     "player_client": [client],
@@ -436,7 +437,13 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
             if ffmpeg_bin:
                 cmd.extend(["--ffmpeg-location", os.path.dirname(ffmpeg_bin)])
 
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            except subprocess.TimeoutExpired:
+                raise RuntimeError(
+                    f"Audio extraction timed out after 15s (YouTube rate limits cloud datacenter IPs). "
+                    "Please click 'Paste text' above the player to index your transcript immediately!"
+                )
             if proc.returncode != 0:
                 err_detail = proc.stderr.strip() or proc.stdout.strip()
                 raise RuntimeError(
@@ -491,7 +498,7 @@ def fetch_transcript_cloud_proxy(video_id: str) -> List[TranscriptSnippet]:
             "https://transcribeyoutube.com/api/transcript",
             json={"url": url},
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=12.0
+            timeout=3.0
         )
         if resp.status_code == 200:
             data = resp.json()
