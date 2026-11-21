@@ -439,8 +439,11 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
     """
     Main entry point for Phase 1:
     Fetches captions with start time and duration per line.
-    Supports both modern youtube-transcript-api (>=1.0.0) and legacy API styles.
-    Prefers manual captions, falls back to auto-generated captions, then Whisper.
+    Strategy:
+      1. Tier 1 (yt-dlp InnerTube Mobile Extraction): Skips webpage download to bypass
+         cloud IP 429 rate limits on Render/AWS/GCP.
+      2. Tier 2 (youtube-transcript-api): Standard caption scraping fallback.
+      3. Tier 3 (Whisper Speech-to-Text): Audio download & transcription if zero captions exist.
     """
     import youtube_transcript_api
     from youtube_transcript_api import YouTubeTranscriptApi
@@ -449,12 +452,20 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
         languages = ["en", "en-US", "en-GB"]
 
     video_id = extract_video_id(url_or_id)
-    raw_snippets = []
 
+    # 1. Primary Strategy: yt-dlp direct timedtext extraction (bypasses cloud IP 429 blocks)
     try:
-        # Check if modern instantiated API (>=1.0.0) or legacy static API (<1.0.0)
-        api = YouTubeTranscriptApi() if isinstance(YouTubeTranscriptApi, type) and hasattr(YouTubeTranscriptApi, 'list') else None
+        ytdlp_snippets = fetch_transcript_ytdlp(video_id, languages)
+        if len(ytdlp_snippets) >= 1:
+            logger.info("Retrieved %d snippets via yt-dlp InnerTube API.", len(ytdlp_snippets))
+            return clean_transcript_lines(ytdlp_snippets)
+    except Exception as e:
+        logger.info("yt-dlp InnerTube extraction failed (%s). Falling back to youtube-transcript-api...", e)
 
+    # 2. Secondary Strategy: youtube-transcript-api
+    raw_snippets = []
+    try:
+        api = YouTubeTranscriptApi() if isinstance(YouTubeTranscriptApi, type) and hasattr(YouTubeTranscriptApi, 'list') else None
         transcript_list = None
         if api and hasattr(api, "list"):
             transcript_list = api.list(video_id)
@@ -463,7 +474,6 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
 
         selected_transcript = None
         if transcript_list:
-            # 1. Prefer manual caption in requested languages
             for lang in languages:
                 try:
                     selected_transcript = transcript_list.find_manually_created_transcript([lang])
@@ -472,7 +482,6 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
                 except Exception:
                     pass
 
-            # 2. Fall back to auto-generated caption in requested languages
             if not selected_transcript:
                 for lang in languages:
                     try:
@@ -482,7 +491,6 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
                     except Exception:
                         pass
 
-            # 3. Fall back to any available transcript and translate to English
             if not selected_transcript:
                 try:
                     for t in transcript_list:
@@ -495,7 +503,6 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
                 except Exception:
                     pass
 
-        # If transcript found, fetch snippets
         if selected_transcript:
             raw_data = selected_transcript.fetch()
             raw_snippets = [
@@ -507,7 +514,6 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
                 for item in raw_data
             ]
         elif api and hasattr(api, "fetch"):
-            # Direct fetch fallback
             raw_data = api.fetch(video_id, languages=languages)
             raw_snippets = [
                 TranscriptSnippet(
@@ -528,20 +534,11 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
                 for item in raw_data
             ]
 
+        if len(raw_snippets) >= 1:
+            return clean_transcript_lines(raw_snippets)
+
     except Exception as e:
-        logger.info("Direct transcript retrieval failed (%s). Triggering yt-dlp subtitle fallback...", e)
-        # Tier 2: yt-dlp direct subtitle extraction (bypasses cloud IP blocks)
-        ytdlp_snippets = fetch_transcript_ytdlp(video_id, languages)
-        if len(ytdlp_snippets) >= 3:
-            return ytdlp_snippets
-        # Tier 3: Whisper audio fallback when zero captions exist
-        return fetch_whisper_fallback(video_id)
+        logger.info("youtube-transcript-api retrieval failed (%s). Triggering Tier 3 Whisper fallback...", e)
 
-    # Detect empty or very short transcript (< 3 snippets) and fallback
-    if len(raw_snippets) < 3:
-        ytdlp_snippets = fetch_transcript_ytdlp(video_id, languages)
-        if len(ytdlp_snippets) >= 3:
-            return ytdlp_snippets
-        return fetch_whisper_fallback(video_id)
-
-    return clean_transcript_lines(raw_snippets)
+    # 3. Tertiary Strategy: Whisper audio fallback when zero captions exist anywhere
+    return fetch_whisper_fallback(video_id)
