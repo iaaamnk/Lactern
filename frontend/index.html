@@ -17,17 +17,32 @@
         <span class="logo-icon">▶</span>
         <h1>YouTube Video RAG <span class="badge">Timestamp-Aware</span></h1>
       </div>
-      <div class="ingest-bar">
-        <input 
-          type="text" 
-          id="video-url-input" 
-          placeholder="Paste YouTube URL or Video ID (e.g. https://www.youtube.com/watch?v=...)" 
-          value="https://www.youtube.com/watch?v=jNQXAC9IVRw"
-        />
-        <button id="ingest-btn" class="btn btn-primary">
-          <span class="btn-text">Ingest & Index</span>
-          <span class="spinner hidden"></span>
-        </button>
+      <div class="ingest-bar-container">
+        <div class="ingest-bar">
+          <input 
+            type="text" 
+            id="video-url-input" 
+            placeholder="Paste YouTube URL or Video ID (e.g. https://www.youtube.com/watch?v=...)" 
+            value="https://www.youtube.com/watch?v=jNQXAC9IVRw"
+          />
+          <button id="toggle-manual-transcript-btn" class="btn btn-secondary" title="Paste transcript directly (bypasses YouTube cloud rate limits)">
+            ✍ Paste Text
+          </button>
+          <button id="ingest-btn" class="btn btn-primary">
+            <span class="btn-text">Ingest & Index</span>
+            <span class="spinner hidden"></span>
+          </button>
+        </div>
+        <!-- Manual Transcript Drawer (optional fallback for 429 cloud blocks) -->
+        <div id="manual-transcript-drawer" class="manual-transcript-drawer hidden">
+          <div class="drawer-header">
+            <span>Manual Transcript / Notes Fallback (optional)</span>
+            <button id="close-drawer-btn" class="btn-icon" title="Close">✕</button>
+          </div>
+          <textarea 
+            id="manual-transcript-input" 
+            placeholder="Paste YouTube captions, transcript, or lecture notes here...&#10;Formats supported:&#10;• YouTube copied transcript (00:15 / text)&#10;• Timed lines: [01:23] Some text&#10;• VTT / SRT cues&#10;• Plain text / paragraphs (will be automatically chunked)"></textarea>
+        </div>
       </div>
     </header>
 

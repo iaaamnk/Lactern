@@ -18,10 +18,29 @@ const chunkCounter = document.getElementById("chunk-counter");
 
 const videoUrlInput = document.getElementById("video-url-input");
 const ingestBtn = document.getElementById("ingest-btn");
+const toggleManualTranscriptBtn = document.getElementById("toggle-manual-transcript-btn");
+const manualTranscriptDrawer = document.getElementById("manual-transcript-drawer");
+const closeDrawerBtn = document.getElementById("close-drawer-btn");
+const manualTranscriptInput = document.getElementById("manual-transcript-input");
 const questionInput = document.getElementById("question-input");
 const sendBtn = document.getElementById("send-btn");
 const chatMessages = document.getElementById("chat-messages");
 const chatForm = document.getElementById("chat-form");
+
+if (toggleManualTranscriptBtn) {
+  toggleManualTranscriptBtn.addEventListener("click", () => {
+    manualTranscriptDrawer.classList.toggle("hidden");
+    if (!manualTranscriptDrawer.classList.contains("hidden")) {
+      manualTranscriptInput.focus();
+    }
+  });
+}
+
+if (closeDrawerBtn) {
+  closeDrawerBtn.addEventListener("click", () => {
+    manualTranscriptDrawer.classList.add("hidden");
+  });
+}
 
 // 1. YouTube IFrame API Initialization
 function onYouTubeIframeAPIReady() {
@@ -158,14 +177,21 @@ ingestBtn.addEventListener("click", async () => {
   const url = videoUrlInput.value.trim();
   if (!url) return;
 
+  const transcriptText = manualTranscriptInput ? manualTranscriptInput.value.trim() : "";
+
   setIngesting(true);
   showStatus("Ingesting video captions and building time-aware chunks...", false);
 
   try {
+    const payload = { url };
+    if (transcriptText) {
+      payload.transcript_text = transcriptText;
+    }
+
     const resp = await fetch("/api/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(payload),
     });
 
     if (!resp.ok) {
@@ -177,6 +203,9 @@ ingestBtn.addEventListener("click", async () => {
     currentVideoId = data.video_id;
 
     showStatus(`Video indexed successfully (${data.chunk_count} chunks). ${data.cached ? "[Cached]" : ""}`, false);
+    if (manualTranscriptDrawer) {
+      manualTranscriptDrawer.classList.add("hidden");
+    }
 
     // Load video in YouTube player
     if (player && player.cueVideoById) {
@@ -193,6 +222,13 @@ ingestBtn.addEventListener("click", async () => {
     questionInput.focus();
   } catch (err) {
     showStatus(`Error: ${err.message}`, true);
+    // If rate-limited or Whisper failed, reveal manual transcript drawer automatically
+    if (manualTranscriptDrawer) {
+      manualTranscriptDrawer.classList.remove("hidden");
+      if (manualTranscriptInput) {
+        manualTranscriptInput.focus();
+      }
+    }
   } finally {
     setIngesting(false);
   }

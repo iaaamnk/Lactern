@@ -149,11 +149,109 @@ def ensure_ffmpeg() -> Optional[str]:
     return None
 
 
+def parse_raw_text_transcript(raw_text: str) -> List[TranscriptSnippet]:
+    """
+    Parses manually pasted transcript text.
+    Handles:
+      1. YouTube UI copied transcript format (alternating timestamp line + text line)
+      2. Inline timestamp format: '01:23 Some spoken line' or '[01:23] Some spoken line'
+      3. SRT / VTT timestamp cues: '00:01:23.456 --> 00:01:25.789'
+      4. Plain text / paragraphs without timestamps (assigns progressive synthetic timestamps)
+    """
+    import re
+
+    if not raw_text or not raw_text.strip():
+        return []
+
+    lines = [l.strip() for l in raw_text.strip().splitlines() if l.strip()]
+    snippets: List[TranscriptSnippet] = []
+
+    def time_to_sec(t_str: str) -> float:
+        parts = t_str.replace(",", ".").split(":")
+        if len(parts) == 3:
+            return float(parts[0]) * 3600.0 + float(parts[1]) * 60.0 + float(parts[2])
+        elif len(parts) == 2:
+            return float(parts[0]) * 60.0 + float(parts[1])
+        return float(parts[0])
+
+    ts_pattern = re.compile(r"^\[?((?:\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d+)?)\]?\s*(.*)$")
+    vtt_pattern = re.compile(r"^((?:\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d+)?)\s*-->\s*((?:\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d+)?)")
+
+    # Check if lines look like alternating timestamp / text
+    i = 0
+    matched_timestamps = 0
+    while i < len(lines):
+        line = lines[i]
+        # Ignore WEBVTT or pure number cue IDs
+        if line.upper() == "WEBVTT" or line.isdigit():
+            i += 1
+            continue
+
+        vtt_match = vtt_pattern.match(line)
+        if vtt_match:
+            start_s = time_to_sec(vtt_match.group(1))
+            end_s = time_to_sec(vtt_match.group(2))
+            text_lines = []
+            i += 1
+            while i < len(lines) and not vtt_pattern.match(lines[i]) and not lines[i].isdigit():
+                text_lines.append(lines[i])
+                i += 1
+            text = " ".join(text_lines).strip()
+            if text:
+                snippets.append(TranscriptSnippet(text=text, start=round(start_s, 2), duration=round(max(1.0, end_s - start_s), 2)))
+            continue
+
+        ts_match = ts_pattern.match(line)
+        if ts_match:
+            matched_timestamps += 1
+            t_str, rest = ts_match.groups()
+            start_s = time_to_sec(t_str)
+            if rest:
+                snippets.append(TranscriptSnippet(text=rest, start=round(start_s, 2), duration=3.0))
+                i += 1
+            else:
+                # Next line might be the text
+                if i + 1 < len(lines) and not ts_pattern.match(lines[i + 1]):
+                    snippets.append(TranscriptSnippet(text=lines[i + 1], start=round(start_s, 2), duration=3.0))
+                    i += 2
+                else:
+                    i += 1
+            continue
+
+        i += 1
+
+    # If timestamp parsing yielded results, refine durations
+    if snippets and matched_timestamps > 0:
+        for idx in range(len(snippets) - 1):
+            next_start = snippets[idx + 1].start
+            cur_start = snippets[idx].start
+            if next_start > cur_start:
+                snippets[idx].duration = round(next_start - cur_start, 2)
+            else:
+                snippets[idx].duration = 3.0
+        return clean_transcript_lines(snippets)
+
+    # Fallback for untimed plain text: split into sentences/paragraphs
+    current_time = 0.0
+    plain_snippets = []
+    for line in lines:
+        if line.upper() == "WEBVTT":
+            continue
+        # Split line into roughly sentence chunks
+        chunks = [c.strip() for c in re.split(r"(?<=[.!?])\s+", line) if c.strip()]
+        for c in chunks:
+            est_duration = max(2.5, min(15.0, len(c.split()) * 0.4))
+            plain_snippets.append(TranscriptSnippet(text=c, start=round(current_time, 2), duration=round(est_duration, 2)))
+            current_time += est_duration
+
+    return clean_transcript_lines(plain_snippets)
+
+
 def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None) -> List[TranscriptSnippet]:
     """
     Tier 2 caption retrieval via yt-dlp.
     Directly extracts YouTube JSON3 / VTT timed text without downloading video or audio.
-    Uses mobile player_client emulation to bypass YouTube HTTP 429 Too Many Requests on cloud IPs.
+    Uses mobile player_client and skips webpage download to bypass YouTube HTTP 429 Too Many Requests on cloud IPs.
     """
     import yt_dlp
     import httpx
@@ -168,11 +266,12 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["ios", "android", "mweb", "web_embedded"]
+                "player_client": ["android", "ios", "mweb", "web_embedded"],
+                "player_skip": ["webpage", "configs", "js"],
             }
         },
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+            "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"
         },
     }
 
@@ -276,9 +375,9 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
                 "-f",
                 "ba/b",
                 "--extractor-args",
-                "youtube:player_client=ios,android,mweb,web_embedded",
+                "youtube:player_client=android,ios;player_skip=webpage,configs,js",
                 "--user-agent",
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+                "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip",
                 "-o",
                 output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
@@ -289,7 +388,11 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
             proc = subprocess.run(cmd, capture_output=True, text=True)
             if proc.returncode != 0:
                 err_detail = proc.stderr.strip() or proc.stdout.strip()
-                raise RuntimeError(f"Audio download failed: {err_detail[:300]}")
+                raise RuntimeError(
+                    f"Audio download failed on cloud IP: {err_detail[:200]}. "
+                    "YouTube rate-limited automated access for this video. "
+                    "You can paste the video's transcript directly using the 'Paste Transcript' option in the app."
+                )
 
             # Locate downloaded audio file
             downloaded = glob.glob(os.path.join(tmpdir, f"{video_id}.*"))

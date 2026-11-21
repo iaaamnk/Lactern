@@ -54,6 +54,7 @@ def get_or_load_store(video_id: str) -> Optional[VideoVectorStore]:
 
 class IngestRequest(BaseModel):
     url: str = Field(..., description="YouTube URL or 11-char Video ID")
+    transcript_text: Optional[str] = Field(default=None, description="Optional manual transcript paste fallback")
 
 
 class IngestResponse(BaseModel):
@@ -88,11 +89,17 @@ class AskResponse(BaseModel):
     model_name: str
 
 
-def run_ingestion_job(video_id: str, url: str):
+def run_ingestion_job(video_id: str, url: str, transcript_text: Optional[str] = None):
     """Ingestion pipeline: transcript -> chunking -> vector store caching."""
     try:
-        ingestion_status[video_id] = {"status": "processing", "message": "Fetching transcript captions..."}
-        snippets = transcript.fetch_transcript(url)
+        if transcript_text and transcript_text.strip():
+            ingestion_status[video_id] = {"status": "processing", "message": "Parsing manual transcript text..."}
+            snippets = transcript.parse_raw_text_transcript(transcript_text.strip())
+            if not snippets:
+                raise ValueError("Could not extract any transcript snippets from the provided text.")
+        else:
+            ingestion_status[video_id] = {"status": "processing", "message": "Fetching transcript captions..."}
+            snippets = transcript.fetch_transcript(url)
         
         ingestion_status[video_id] = {"status": "processing", "message": "Chunking transcript with time-preservation..."}
         chunks = chunk_transcript(video_id, snippets)
@@ -118,29 +125,30 @@ def run_ingestion_job(video_id: str, url: str):
 @app.post("/api/ingest", response_model=IngestResponse)
 def ingest_video(req: IngestRequest):
     """
-    POST /ingest {url}
-    Cached per video_id: A second request for the same video skips ingestion.
+    POST /ingest {url, transcript_text?}
+    Cached per video_id: A second request for the same video skips ingestion unless new transcript text is provided.
     """
     try:
         video_id = transcript.extract_video_id(req.url)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Check cache first
-    existing_store = get_or_load_store(video_id)
-    if existing_store:
-        ingestion_status[video_id] = {
-            "status": "ready",
-            "chunk_count": len(existing_store.chunks),
-            "message": "Loaded from cache.",
-        }
-        return IngestResponse(
-            video_id=video_id,
-            status="ready",
-            cached=True,
-            chunk_count=len(existing_store.chunks),
-            message="Video already indexed in cache.",
-        )
+    # Check cache first (skip only if no manual text override is passed)
+    if not req.transcript_text:
+        existing_store = get_or_load_store(video_id)
+        if existing_store:
+            ingestion_status[video_id] = {
+                "status": "ready",
+                "chunk_count": len(existing_store.chunks),
+                "message": "Loaded from cache.",
+            }
+            return IngestResponse(
+                video_id=video_id,
+                status="ready",
+                cached=True,
+                chunk_count=len(existing_store.chunks),
+                message="Video already indexed in cache.",
+            )
 
     # Check if currently processing
     if video_id in ingestion_status and ingestion_status[video_id].get("status") == "processing":
@@ -153,7 +161,7 @@ def ingest_video(req: IngestRequest):
         )
 
     # Run ingestion job
-    run_ingestion_job(video_id, req.url)
+    run_ingestion_job(video_id, req.url, req.transcript_text)
     status_info = ingestion_status.get(video_id, {})
     if status_info.get("status") == "failed":
         raise HTTPException(status_code=500, detail=status_info.get("message"))

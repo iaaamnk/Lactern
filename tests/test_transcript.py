@@ -44,3 +44,45 @@ def test_clean_transcript_lines_deduplication():
     assert "[Music]" not in texts
     assert "hello world and welcome" in texts
     assert "hello world" not in texts  # Prefix replaced by fuller version
+
+
+def test_parse_raw_text_transcript_youtube_format():
+    from backend.ingestion.transcript import parse_raw_text_transcript
+
+    raw = """
+    0:04
+    oh
+    0:08
+    Stuart you're not going to answer it
+    0:12
+    he wants to talk about Penny
+    """
+    snippets = parse_raw_text_transcript(raw)
+    assert len(snippets) == 3
+    assert snippets[0].start == 4.0
+    assert snippets[0].text == "oh"
+    assert snippets[1].start == 8.0
+    assert snippets[1].text == "Stuart you're not going to answer it"
+
+
+def test_parse_raw_text_transcript_inline_timed():
+    from backend.ingestion.transcript import parse_raw_text_transcript
+
+    raw = """
+    [01:15] Welcome everyone to our quantum computing seminar.
+    [01:45] Today we discuss superposition and entanglement.
+    """
+    snippets = parse_raw_text_transcript(raw)
+    assert len(snippets) == 2
+    assert snippets[0].start == 75.0
+    assert snippets[1].start == 105.0
+
+
+def test_parse_raw_text_transcript_plain_text():
+    from backend.ingestion.transcript import parse_raw_text_transcript
+
+    raw = "Artificial intelligence is advancing rapidly. Machine learning models require clean training data."
+    snippets = parse_raw_text_transcript(raw)
+    assert len(snippets) == 2
+    assert snippets[0].start == 0.0
+    assert snippets[1].start > 0.0
