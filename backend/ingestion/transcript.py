@@ -326,51 +326,59 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
                 subtitles = info.get("subtitles", {})
                 auto_captions = info.get("automatic_captions", {})
 
-                # 1. Prefer manual captions in requested languages
-                selected_fmt = None
+                # Candidate formats: prefer native (no tlang= auto-translation) and json3
+                candidate_fmts = []
+
+                # 1. Manual subtitles in requested languages
                 for lang in languages:
                     if lang in subtitles:
-                        fmts = subtitles[lang]
-                        json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
-                        selected_fmt = json3 or fmts[0]
-                        break
+                        candidate_fmts.extend(subtitles[lang])
 
-                # 2. Fall back to auto-generated captions in requested languages
-                if not selected_fmt:
-                    for lang in languages:
-                        if lang in auto_captions:
-                            fmts = auto_captions[lang]
-                            json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
-                            selected_fmt = json3 or fmts[0]
-                            break
+                # 2. Native auto-generated captions (prefer -orig first, then requested languages)
+                orig_langs = [f"{l}-orig" for l in languages] + languages
+                for lang in orig_langs:
+                    if lang in auto_captions:
+                        candidate_fmts.extend(auto_captions[lang])
 
-                # 3. Fall back to any English or first available caption
-                if not selected_fmt:
-                    all_caps = {**subtitles, **auto_captions}
-                    for lang, fmts in all_caps.items():
-                        if lang.startswith("en") or lang in ("en", "auto"):
-                            json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
-                            selected_fmt = json3 or fmts[0]
-                            break
-                    if not selected_fmt and all_caps:
-                        first_lang = next(iter(all_caps))
-                        fmts = all_caps[first_lang]
-                        selected_fmt = next((f for f in fmts if f.get("ext") == "json3"), None) or fmts[0]
+                # 3. Fallback to any other subtitles or auto-captions
+                if not candidate_fmts:
+                    for lang, fmts in {**subtitles, **auto_captions}.items():
+                        if lang.startswith("en") or "orig" in lang:
+                            candidate_fmts.extend(fmts)
 
-                if not selected_fmt or "url" not in selected_fmt:
-                    continue
+                if not candidate_fmts and (subtitles or auto_captions):
+                    for fmts in {**subtitles, **auto_captions}.values():
+                        candidate_fmts.extend(fmts)
+
+                # Prioritize: non-translated native captions first (avoids YouTube 429 on /api/timedtext?tlang=...)
+                # then json3 extension, then original variant
+                candidate_fmts.sort(
+                    key=lambda f: (
+                        1 if "tlang=" in f.get("url", "") else 0,
+                        0 if f.get("ext") == "json3" else 1,
+                        0 if "gemini" in f.get("url", "") else 1,
+                    )
+                )
 
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
                 }
-                resp = httpx.get(selected_fmt["url"], headers=headers, timeout=20.0)
-                resp.raise_for_status()
 
-                fmt_ext = selected_fmt.get("ext", "json3")
-                snippets = _parse_timedtext_response(resp.text, ext=fmt_ext)
-                if len(snippets) >= 1:
-                    logger.info("Successfully fetched %d snippets via %s client.", len(snippets), client)
-                    return clean_transcript_lines(snippets)
+                # Try candidate formats until one succeeds
+                for fmt in candidate_fmts[:5]:
+                    url_to_fetch = fmt.get("url")
+                    if not url_to_fetch:
+                        continue
+                    try:
+                        resp = httpx.get(url_to_fetch, headers=headers, timeout=15.0)
+                        if resp.status_code == 200 and resp.text.strip():
+                            fmt_ext = fmt.get("ext", "json3")
+                            snippets = _parse_timedtext_response(resp.text, ext=fmt_ext)
+                            if len(snippets) >= 1:
+                                logger.info("Successfully fetched %d snippets via %s client (fmt: %s).", len(snippets), client, fmt_ext)
+                                return clean_transcript_lines(snippets)
+                    except Exception as fetch_err:
+                        logger.info("Candidate timedtext format fetch failed (%s). Trying next format...", fetch_err)
 
         except Exception as e:
             logger.warning("yt-dlp subtitle extraction with client %s failed: %s", client, e)
