@@ -465,3 +465,11 @@ function escapeHtml(str) {
   div.textContent = str || "";
   return div.innerHTML;
 }
+
+// Immediate boot on DOM ready so page is never empty or bland
+window.addEventListener("DOMContentLoaded", () => {
+  currentVideoId = "LxCjscf2PjA";
+  updateSuggestions("LxCjscf2PjA");
+  loadChunks("LxCjscf2PjA");
+});
+
