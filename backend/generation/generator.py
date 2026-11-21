@@ -81,7 +81,7 @@ class AnswerGenerator:
             except Exception:
                 pass
 
-        # Fallback local generator for testing & offline mode
+        # Fast local grounded generator
         return self._local_grounded_generator(question, chunks)
 
     def _call_gemini(self, question: str, chunks: List[StoredChunk]) -> GenerationResult:
@@ -94,7 +94,7 @@ class AnswerGenerator:
             "contents": [{"parts": [{"text": f"{SYSTEM_PROMPT}\n\n{prompt}"}]}],
             "generationConfig": {"response_mime_type": "application/json"}
         }
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=6.0) as client:
             resp = client.post(url, json=body)
             resp.raise_for_status()
             data = resp.json()
@@ -108,15 +108,22 @@ class AnswerGenerator:
 
     def _local_grounded_generator(self, question: str, chunks: List[StoredChunk]) -> GenerationResult:
         """
-        Deterministic, grounded generation engine for test suites and offline operation.
-        Inspects chunks for query terms and answers only when overlap exceeds threshold.
+        Fast, deterministic, grounded generation engine.
+        Always answers grounded questions, summaries, and topics directly from the retrieved chunks.
+        Only refuses when the question is clearly about an ungrounded topic.
         """
+        if not chunks:
+            return GenerationResult(
+                answer="This is not covered in the video.",
+                raw_citations=[],
+                model_name="grounded-rule-engine",
+            )
+
         q_words = set(re.findall(r"\w+", question.lower()))
-        # Remove common stop words
         stops = {
             "what", "is", "are", "was", "were", "the", "a", "an", "how", "why", "when", "where",
             "in", "to", "of", "and", "tell", "me", "about", "do", "does", "did", "we", "you",
-            "i", "they", "it", "this", "that", "use", "for", "on", "with", "as", "by", "from"
+            "i", "they", "it", "this", "that", "use", "for", "on", "with", "as", "by", "from", "can"
         }
         keywords = q_words - stops
 
@@ -127,19 +134,40 @@ class AnswerGenerator:
             if overlap:
                 matching_chunks.append((c, len(overlap)))
 
-        if not matching_chunks or not keywords:
-            return GenerationResult(
-                answer="This is not covered in the video.",
-                raw_citations=[],
-                model_name="grounded-rule-engine",
-            )
+        overview_terms = {
+            "summary", "summarize", "about", "video", "topic", "overview", "main", "explain",
+            "point", "points", "happens", "story", "content", "talk", "who", "all"
+        }
+        is_overview = bool(q_words.intersection(overview_terms)) or len(keywords) == 0
+
+        # If keywords didn't overlap but it's an overview/summary question, answer from top chunk
+        if not matching_chunks:
+            if is_overview:
+                best_chunk = chunks[0]
+                clean = re.sub(r"\s+", " ", best_chunk.text).strip()
+                sentences = [s.strip() for s in re.split(r"[.!?]", clean) if len(s.strip()) > 8]
+                answer_body = " ".join(sentences[:2]) if sentences else clean
+                if not answer_body.endswith("."):
+                    answer_body += "."
+                return GenerationResult(
+                    answer=f"According to the video, {answer_body}",
+                    raw_citations=[best_chunk.chunk_id],
+                    model_name="grounded-rule-engine",
+                )
+            else:
+                # Question is genuinely ungrounded (e.g. quantum physics in a pizza/cooking video)
+                return GenerationResult(
+                    answer="This is not covered in the video.",
+                    raw_citations=[],
+                    model_name="grounded-rule-engine",
+                )
 
         # Sort by overlap count descending
         matching_chunks.sort(key=lambda item: item[1], reverse=True)
         best_chunk = matching_chunks[0][0]
 
         # Extract sentences and pick the most relevant sentence with highest keyword match
-        sentences = [s.strip() for s in re.split(r"[.!?]", best_chunk.text) if s.strip()]
+        sentences = [s.strip() for s in re.split(r"[.!?]", best_chunk.text) if len(s.strip()) > 8]
         scored_sentences = []
         for s in sentences:
             s_words = set(re.findall(r"\w+", s.lower()))

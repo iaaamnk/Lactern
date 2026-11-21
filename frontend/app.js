@@ -1,7 +1,7 @@
 // State
 let player = null;
 let isPlayerReady = false;
-let currentVideoId = "LxCjscf2PjA";
+let currentVideoId = "0wp5Z3z4bjM";
 let currentChunks = [];
 let conversationHistory = [];
 let wordTimer = null;
@@ -47,7 +47,7 @@ function onYouTubeIframeAPIReady() {
   player = new YT.Player("yt-player", {
     height: "100%",
     width: "100%",
-    videoId: "LxCjscf2PjA", // Default starter video
+    videoId: "0wp5Z3z4bjM", // Default embeddable starter video
     playerVars: {
       playsinline: 1,
       modestbranding: 1,
@@ -263,8 +263,10 @@ async function ingestVideo() {
     drawer.classList.add("hidden");
 
     // Load video in YouTube player
-    if (player && player.cueVideoById) {
-      hideFallback();
+    hideFallback();
+    if (player && player.loadVideoById) {
+      player.loadVideoById(currentVideoId);
+    } else if (player && player.cueVideoById) {
       player.cueVideoById(currentVideoId);
     }
 
@@ -420,9 +422,9 @@ chatForm.onsubmit = (e) => {
 
 // 6. Suggestions Engine
 const SUGGESTIONS_MAP = {
+  "0wp5Z3z4bjM": ["What dishes are cooked in this video?", "How is the smoked lamb neck curry made?", "What makes the avocado bhatura puff up?"],
+  GvrIe41E7xA: ["Why does Sheldon refuse to answer the phone?", "What game are Leonard and Sheldon playing?", "Why is Sheldon angry at Tam?"],
   LxCjscf2PjA: ["How does Gordon prepare the eggs?", "What is the secret with the butter?", "When should you season the eggs?"],
-  "0wp5Z3z4bjM": ["What is self-attention?", "How are query and key vectors computed?", "Why is softmax used in attention?"],
-  GvrIe41E7xA: ["What makes Python dynamic?", "What are decorators in Python?", "Who created Python?"],
   jNQXAC9IVRw: ["What is cool about elephants?", "Where was the video filmed?", "What does the speaker say about trunks?"],
 };
 
@@ -473,8 +475,8 @@ function escapeHtml(str) {
 
 // Immediate boot on DOM ready so page is never empty or bland
 window.addEventListener("DOMContentLoaded", () => {
-  currentVideoId = "LxCjscf2PjA";
-  updateSuggestions("LxCjscf2PjA");
-  loadChunks("LxCjscf2PjA");
+  currentVideoId = "0wp5Z3z4bjM";
+  updateSuggestions("0wp5Z3z4bjM");
+  loadChunks("0wp5Z3z4bjM");
 });
 

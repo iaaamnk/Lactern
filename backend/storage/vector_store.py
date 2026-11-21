@@ -192,6 +192,7 @@ class FaissVectorIndex:
 
 
 _GLOBAL_ST_MODEL = None
+_QUERY_EMBED_CACHE: Dict[str, np.ndarray] = {}
 
 
 def get_shared_sentence_transformer(model_name: str = "all-MiniLM-L6-v2"):
@@ -245,13 +246,21 @@ class EmbeddingProvider:
         return matrix
 
     def embed_query(self, query: str) -> np.ndarray:
+        cache_key = query.strip().lower()
+        if cache_key in _QUERY_EMBED_CACHE:
+            return _QUERY_EMBED_CACHE[cache_key]
+
         st = self._get_model()
         if st is not None:
             embedding = st.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
-            return np.ascontiguousarray(embedding, dtype=np.float32)
+            res = np.ascontiguousarray(embedding, dtype=np.float32)
+            _QUERY_EMBED_CACHE[cache_key] = res
+            return res
 
         if self._tfidf is not None:
-            return self._tfidf.transform([query])[0]
+            res = self._tfidf.transform([query])[0]
+            _QUERY_EMBED_CACHE[cache_key] = res
+            return res
 
         return np.zeros(self.dimension or 384, dtype=np.float32)
 
