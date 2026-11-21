@@ -52,19 +52,6 @@ def get_or_load_store(video_id: str) -> Optional[VideoVectorStore]:
     return None
 
 
-@app.on_event("startup")
-def preload_demo_stores():
-    """Pre-warm sentence-transformers model and demo stores into memory on boot."""
-    demo_ids = ["LxCjscf2PjA", "0wp5Z3z4bjM", "GvrIe41E7xA", "jNQXAC9IVRw"]
-    logger.info("Pre-warming active video stores and embedding model...")
-    for vid in demo_ids:
-        try:
-            get_or_load_store(vid)
-        except Exception as e:
-            logger.warning(f"Could not preload store {vid}: {e}")
-
-
-
 class IngestRequest(BaseModel):
     url: str = Field(..., description="YouTube URL or 11-char Video ID")
     transcript_text: Optional[str] = Field(default=None, description="Optional manual transcript paste fallback")

@@ -195,11 +195,14 @@ _GLOBAL_ST_MODEL = None
 
 
 def get_shared_sentence_transformer(model_name: str = "all-MiniLM-L6-v2"):
-    """Singleton getter for SentenceTransformer to avoid re-downloading/re-instantiating on every store."""
+    """Singleton getter for SentenceTransformer with 1-thread limit to fit in 512MB RAM."""
     global _GLOBAL_ST_MODEL
     if _GLOBAL_ST_MODEL is not None:
         return _GLOBAL_ST_MODEL
     try:
+        import torch
+        # Cap PyTorch thread pool to 1 to prevent memory explosion on 512MB containers
+        torch.set_num_threads(1)
         from sentence_transformers import SentenceTransformer
         _GLOBAL_ST_MODEL = SentenceTransformer(model_name)
         return _GLOBAL_ST_MODEL
@@ -211,22 +214,28 @@ class EmbeddingProvider:
     """
     Semantic & Dense Embedding provider for both chunks and queries.
     Uses sentence-transformers 'all-MiniLM-L6-v2' (384-dim semantic embeddings) by default,
-    with a graceful TF-IDF fallback for test isolation or environments without PyTorch.
+    with lazy initialization so server startup takes < 1 sec and consumes zero PyTorch RAM.
     """
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
-        self._st_model = get_shared_sentence_transformer(model_name)
-        if self._st_model is not None:
-            self._tfidf = None
-            self.dimension = 384
-        else:
-            self._tfidf = PureTfidfVectorizer(min_df=1)
-            self.dimension = 0
+        self._st_model = None
+        self._tfidf: Optional[PureTfidfVectorizer] = None
+        self.dimension = 384
+
+    def _get_model(self):
+        """Lazy load model on first inference request."""
+        if self._st_model is None:
+            self._st_model = get_shared_sentence_transformer(self.model_name)
+            if self._st_model is None and self._tfidf is None:
+                self._tfidf = PureTfidfVectorizer(min_df=1)
+                self.dimension = 0
+        return self._st_model
 
     def fit_and_embed_corpus(self, texts: List[str]) -> np.ndarray:
-        if self._st_model is not None:
-            embeddings = self._st_model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+        st = self._get_model()
+        if st is not None:
+            embeddings = st.encode(texts, normalize_embeddings=True, show_progress_bar=False)
             self.dimension = embeddings.shape[1]
             return np.ascontiguousarray(embeddings, dtype=np.float32)
         
@@ -236,14 +245,15 @@ class EmbeddingProvider:
         return matrix
 
     def embed_query(self, query: str) -> np.ndarray:
-        if self._st_model is not None:
-            embedding = self._st_model.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
+        st = self._get_model()
+        if st is not None:
+            embedding = st.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
             return np.ascontiguousarray(embedding, dtype=np.float32)
 
         if self._tfidf is not None:
             return self._tfidf.transform([query])[0]
 
-        raise RuntimeError("Embedding model has not been initialized.")
+        return np.zeros(self.dimension or 384, dtype=np.float32)
 
 
 class VideoVectorStore:
