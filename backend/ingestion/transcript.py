@@ -247,11 +247,56 @@ def parse_raw_text_transcript(raw_text: str) -> List[TranscriptSnippet]:
     return clean_transcript_lines(plain_snippets)
 
 
+def _parse_timedtext_response(resp_text: str, ext: str = "json3") -> List[TranscriptSnippet]:
+    """
+    Parses any timedtext payload returned by YouTube (json3, srv1 XML, VTT, or SRT).
+    """
+    import json
+    import re
+    import xml.etree.ElementTree as ET
+
+    snippets: List[TranscriptSnippet] = []
+
+    # 1. JSON3 format
+    if ext == "json3" or resp_text.strip().startswith("{"):
+        try:
+            data = json.loads(resp_text)
+            for event in data.get("events", []):
+                if "segs" in event:
+                    text = "".join(s.get("utf8", "") for s in event["segs"]).replace("\n", " ").strip()
+                    if text:
+                        start = float(event.get("tStartMs", 0)) / 1000.0
+                        dur = float(event.get("dDurationMs", 0)) / 1000.0
+                        snippets.append(TranscriptSnippet(text=text, start=round(start, 2), duration=round(dur, 2)))
+            if snippets:
+                return snippets
+        except Exception:
+            pass
+
+    # 2. XML / srv1 / srv2 / srv3 format
+    if "<transcript" in resp_text or "<text" in resp_text:
+        try:
+            root = ET.fromstring(resp_text)
+            for elem in root.findall(".//text"):
+                text = (elem.text or "").replace("\n", " ").strip()
+                if text:
+                    start = float(elem.attrib.get("start", 0.0))
+                    dur = float(elem.attrib.get("dur", 3.0))
+                    snippets.append(TranscriptSnippet(text=text, start=round(start, 2), duration=round(dur, 2)))
+            if snippets:
+                return snippets
+        except Exception:
+            pass
+
+    # 3. VTT / SRT or line-based text
+    return parse_raw_text_transcript(resp_text)
+
+
 def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None) -> List[TranscriptSnippet]:
     """
-    Tier 2 caption retrieval via yt-dlp.
+    Tier 1 caption retrieval via yt-dlp InnerTube Mobile API.
     Directly extracts YouTube JSON3 / VTT timed text without downloading video or audio.
-    Uses mobile player_client and skips webpage download to bypass YouTube HTTP 429 Too Many Requests on cloud IPs.
+    Uses strict android/ios client emulation and skips webpage download to bypass YouTube HTTP 429 on cloud IPs.
     """
     import yt_dlp
     import httpx
@@ -260,79 +305,77 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
         languages = ["en", "en-US", "en-GB"]
 
     url = f"https://www.youtube.com/watch?v={video_id}"
-    ydl_opts = {
-        "skip_download": True,
-        "quiet": True,
-        "no_warnings": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "ios", "mweb", "web_embedded"],
-                "player_skip": ["webpage", "configs", "js"],
-            }
-        },
-        "http_headers": {
-            "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 11) gzip"
-        },
-    }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            subtitles = info.get("subtitles", {})
-            auto_captions = info.get("automatic_captions", {})
+    # Try clients in order of cloud-IP resilience: android first, then ios
+    for client in ["android", "ios"]:
+        ydl_opts = {
+            "skip_download": True,
+            "quiet": True,
+            "no_warnings": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": [client],
+                    "player_skip": ["webpage", "configs", "js"],
+                }
+            },
+        }
 
-            # 1. Prefer manual captions in requested languages
-            selected_fmt = None
-            for lang in languages:
-                if lang in subtitles:
-                    fmts = subtitles[lang]
-                    json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
-                    selected_fmt = json3 or fmts[0]
-                    break
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                subtitles = info.get("subtitles", {})
+                auto_captions = info.get("automatic_captions", {})
 
-            # 2. Fall back to auto-generated captions in requested languages
-            if not selected_fmt:
+                # 1. Prefer manual captions in requested languages
+                selected_fmt = None
                 for lang in languages:
-                    if lang in auto_captions:
-                        fmts = auto_captions[lang]
+                    if lang in subtitles:
+                        fmts = subtitles[lang]
                         json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
                         selected_fmt = json3 or fmts[0]
                         break
 
-            # 3. Fall back to any English or first available caption
-            if not selected_fmt:
-                all_caps = {**subtitles, **auto_captions}
-                for lang, fmts in all_caps.items():
-                    if lang.startswith("en") or lang in ("en", "auto"):
-                        json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
-                        selected_fmt = json3 or fmts[0]
-                        break
-                if not selected_fmt and all_caps:
-                    first_lang = next(iter(all_caps))
-                    fmts = all_caps[first_lang]
-                    selected_fmt = next((f for f in fmts if f.get("ext") == "json3"), None) or fmts[0]
+                # 2. Fall back to auto-generated captions in requested languages
+                if not selected_fmt:
+                    for lang in languages:
+                        if lang in auto_captions:
+                            fmts = auto_captions[lang]
+                            json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
+                            selected_fmt = json3 or fmts[0]
+                            break
 
-            if not selected_fmt or "url" not in selected_fmt:
-                return []
+                # 3. Fall back to any English or first available caption
+                if not selected_fmt:
+                    all_caps = {**subtitles, **auto_captions}
+                    for lang, fmts in all_caps.items():
+                        if lang.startswith("en") or lang in ("en", "auto"):
+                            json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
+                            selected_fmt = json3 or fmts[0]
+                            break
+                    if not selected_fmt and all_caps:
+                        first_lang = next(iter(all_caps))
+                        fmts = all_caps[first_lang]
+                        selected_fmt = next((f for f in fmts if f.get("ext") == "json3"), None) or fmts[0]
 
-            resp = httpx.get(selected_fmt["url"], timeout=20.0)
-            resp.raise_for_status()
+                if not selected_fmt or "url" not in selected_fmt:
+                    continue
 
-            snippets: List[TranscriptSnippet] = []
-            if selected_fmt.get("ext") == "json3":
-                data = resp.json()
-                for event in data.get("events", []):
-                    if "segs" in event:
-                        text = "".join(s.get("utf8", "") for s in event["segs"]).replace("\n", " ").strip()
-                        if text:
-                            start = float(event.get("tStartMs", 0)) / 1000.0
-                            dur = float(event.get("dDurationMs", 0)) / 1000.0
-                            snippets.append(TranscriptSnippet(text=text, start=round(start, 2), duration=round(dur, 2)))
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                }
+                resp = httpx.get(selected_fmt["url"], headers=headers, timeout=20.0)
+                resp.raise_for_status()
 
-            return clean_transcript_lines(snippets)
-    except Exception as e:
-        logger.info("yt-dlp direct subtitle extraction failed (%s).", e)
-        return []
+                fmt_ext = selected_fmt.get("ext", "json3")
+                snippets = _parse_timedtext_response(resp.text, ext=fmt_ext)
+                if len(snippets) >= 1:
+                    logger.info("Successfully fetched %d snippets via %s client.", len(snippets), client)
+                    return clean_transcript_lines(snippets)
+
+        except Exception as e:
+            logger.warning("yt-dlp subtitle extraction with client %s failed: %s", client, e)
+
+    return []
 
 
 def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
@@ -360,9 +403,9 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
             whisper_module = "faster-whisper"
         except ImportError:
             raise RuntimeError(
-                f"YouTube captions are unavailable or disabled for video '{video_id}'. "
-                "To enable speech-to-text audio fallback, install 'openai-whisper' "
-                "(pip install openai-whisper) and ensure ffmpeg is available."
+                f"YouTube automated caption extraction was rate-limited or disabled for video '{video_id}'. "
+                "You can still index and chat with this video immediately! Simply click '✍ Paste Text' "
+                "above the player to paste the transcript or notes."
             )
 
     try:
