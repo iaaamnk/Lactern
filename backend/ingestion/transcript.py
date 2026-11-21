@@ -149,13 +149,98 @@ def ensure_ffmpeg() -> Optional[str]:
     return None
 
 
+def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None) -> List[TranscriptSnippet]:
+    """
+    Tier 2 caption retrieval via yt-dlp.
+    Directly extracts YouTube JSON3 / VTT timed text without downloading video or audio.
+    Crucial safeguard: Bypasses YouTube cloud IP blocks on Render/AWS.
+    """
+    import yt_dlp
+    import httpx
+
+    if languages is None:
+        languages = ["en", "en-US", "en-GB"]
+
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    ydl_opts = {
+        "skip_download": True,
+        "quiet": True,
+        "no_warnings": True,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            subtitles = info.get("subtitles", {})
+            auto_captions = info.get("automatic_captions", {})
+
+            # 1. Prefer manual captions in requested languages
+            selected_fmt = None
+            for lang in languages:
+                if lang in subtitles:
+                    fmts = subtitles[lang]
+                    json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
+                    selected_fmt = json3 or fmts[0]
+                    break
+
+            # 2. Fall back to auto-generated captions in requested languages
+            if not selected_fmt:
+                for lang in languages:
+                    if lang in auto_captions:
+                        fmts = auto_captions[lang]
+                        json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
+                        selected_fmt = json3 or fmts[0]
+                        break
+
+            # 3. Fall back to any English or first available caption
+            if not selected_fmt:
+                all_caps = {**subtitles, **auto_captions}
+                for lang, fmts in all_caps.items():
+                    if lang.startswith("en") or lang in ("en", "auto"):
+                        json3 = next((f for f in fmts if f.get("ext") == "json3"), None)
+                        selected_fmt = json3 or fmts[0]
+                        break
+                if not selected_fmt and all_caps:
+                    first_lang = next(iter(all_caps))
+                    fmts = all_caps[first_lang]
+                    selected_fmt = next((f for f in fmts if f.get("ext") == "json3"), None) or fmts[0]
+
+            if not selected_fmt or "url" not in selected_fmt:
+                return []
+
+            resp = httpx.get(selected_fmt["url"], timeout=20.0)
+            resp.raise_for_status()
+
+            snippets: List[TranscriptSnippet] = []
+            if selected_fmt.get("ext") == "json3":
+                data = resp.json()
+                for event in data.get("events", []):
+                    if "segs" in event:
+                        text = "".join(s.get("utf8", "") for s in event["segs"]).replace("\n", " ").strip()
+                        if text:
+                            start = float(event.get("tStartMs", 0)) / 1000.0
+                            dur = float(event.get("dDurationMs", 0)) / 1000.0
+                            snippets.append(TranscriptSnippet(text=text, start=round(start, 2), duration=round(dur, 2)))
+
+            return clean_transcript_lines(snippets)
+    except Exception as e:
+        logger.info("yt-dlp direct subtitle extraction failed (%s).", e)
+        return []
+
+
 def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
     """
-    Fallback when captions are missing, disabled, or too short.
-    Uses yt-dlp to download audio and runs speech-to-text with Whisper.
+    Tier 3 Fallback: Runs speech-to-text with Whisper when video has zero captions.
+    Uses sys.executable -m yt_dlp to download raw audio without forced transcoding.
     """
+    import sys
+    import tempfile
+    import os
+    import subprocess
+    import glob
+
     logger.info("Attempting Whisper fallback for video: %s", video_id)
-    ensure_ffmpeg()
+    ffmpeg_bin = ensure_ffmpeg()
     
     # Check if whisper or faster-whisper is installed
     whisper_module = None
@@ -174,20 +259,31 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
             )
 
     try:
-        import tempfile
-        import os
-        import subprocess
-
         with tempfile.TemporaryDirectory() as tmpdir:
-            audio_path = os.path.join(tmpdir, f"{video_id}.mp3")
+            output_template = os.path.join(tmpdir, f"{video_id}.%(ext)s")
             cmd = [
-                "yt-dlp",
-                "-x",
-                "--audio-format", "mp3",
-                "-o", audio_path,
-                f"https://www.youtube.com/watch?v={video_id}"
+                sys.executable,
+                "-m",
+                "yt_dlp",
+                "-f",
+                "ba/b",  # Download best audio directly without transcoding
+                "-o",
+                output_template,
+                f"https://www.youtube.com/watch?v={video_id}",
             ]
-            subprocess.run(cmd, check=True, capture_output=True)
+            if ffmpeg_bin:
+                cmd.extend(["--ffmpeg-location", os.path.dirname(ffmpeg_bin)])
+
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            if proc.returncode != 0:
+                err_detail = proc.stderr.strip() or proc.stdout.strip()
+                raise RuntimeError(f"Audio download failed: {err_detail[:300]}")
+
+            # Locate downloaded audio file
+            downloaded = glob.glob(os.path.join(tmpdir, f"{video_id}.*"))
+            if not downloaded:
+                raise RuntimeError(f"Could not locate downloaded audio for {video_id}")
+            audio_path = downloaded[0]
 
             snippets: List[TranscriptSnippet] = []
             if whisper_module == "openai-whisper":
@@ -318,14 +414,19 @@ def fetch_transcript(url_or_id: str, languages: Optional[List[str]] = None) -> L
             ]
 
     except Exception as e:
-        logger.info("Direct transcript retrieval failed (%s). Triggering fallback...", e)
+        logger.info("Direct transcript retrieval failed (%s). Triggering yt-dlp subtitle fallback...", e)
+        # Tier 2: yt-dlp direct subtitle extraction (bypasses cloud IP blocks)
+        ytdlp_snippets = fetch_transcript_ytdlp(video_id, languages)
+        if len(ytdlp_snippets) >= 3:
+            return ytdlp_snippets
+        # Tier 3: Whisper audio fallback when zero captions exist
         return fetch_whisper_fallback(video_id)
 
     # Detect empty or very short transcript (< 3 snippets) and fallback
     if len(raw_snippets) < 3:
-        try:
-            return fetch_whisper_fallback(video_id)
-        except Exception:
-            pass
+        ytdlp_snippets = fetch_transcript_ytdlp(video_id, languages)
+        if len(ytdlp_snippets) >= 3:
+            return ytdlp_snippets
+        return fetch_whisper_fallback(video_id)
 
     return clean_transcript_lines(raw_snippets)
