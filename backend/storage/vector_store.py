@@ -132,39 +132,124 @@ class PureTfidfVectorizer:
         return matrix / norms
 
 
+try:
+    import faiss
+    HAS_FAISS = True
+except ImportError:
+    HAS_FAISS = False
+
+
+class FaissVectorIndex:
+    """
+    Dedicated FAISS Vector Indexing & Retrieval module.
+    Uses native C++ faiss.IndexFlatIP (Cosine / Inner Product) when available.
+    Provides identical FAISS interface (add, search, L2 normalization) everywhere.
+    """
+
+    def __init__(self, dimension: int = 384):
+        self.dimension = dimension
+        if HAS_FAISS:
+            self._index = faiss.IndexFlatIP(dimension)
+        else:
+            self._index = None
+            self._vectors: Optional[np.ndarray] = None
+
+    def add(self, embeddings: np.ndarray):
+        """Add L2-normalized vectors to the FAISS index."""
+        x = np.ascontiguousarray(embeddings, dtype=np.float32)
+        if x.ndim == 1:
+            x = np.expand_dims(x, 0)
+        # Cosine normalization
+        norms = np.linalg.norm(x, axis=1, keepdims=True)
+        norms[norms == 0.0] = 1.0
+        x = x / norms
+
+        if HAS_FAISS and self._index is not None:
+            self._index.add(x)
+        else:
+            self._vectors = x if self._vectors is None else np.vstack([self._vectors, x])
+
+    def search(self, query_vector: np.ndarray, top_k: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Query FAISS index for top_k nearest neighbors by cosine similarity."""
+        q = np.ascontiguousarray(query_vector, dtype=np.float32)
+        if q.ndim == 1:
+            q = np.expand_dims(q, 0)
+        norm = np.linalg.norm(q, axis=1, keepdims=True)
+        norm[norm == 0.0] = 1.0
+        q = q / norm
+
+        if HAS_FAISS and self._index is not None:
+            scores, indices = self._index.search(q, top_k)
+            return scores[0], indices[0]
+        else:
+            if self._vectors is None or len(self._vectors) == 0:
+                return np.array([], dtype=np.float32), np.array([], dtype=np.int64)
+            scores = np.dot(self._vectors, q.T).flatten()
+            k = min(top_k, len(scores))
+            ranked_indices = np.argsort(scores)[::-1][:k]
+            ranked_scores = scores[ranked_indices]
+            return ranked_scores, ranked_indices
+
+
 class EmbeddingProvider:
     """
-    Embedding provider for both chunks and queries.
-    Uses pure normalized TF-IDF vector space by default,
-    enforcing the core safeguard: ONE model for both chunks and queries.
+    Semantic & Dense Embedding provider for both chunks and queries.
+    Uses sentence-transformers 'all-MiniLM-L6-v2' (384-dim semantic embeddings) by default,
+    with a graceful TF-IDF fallback for test isolation or environments without PyTorch.
     """
 
-    def __init__(self, model_name: str = "pure-tfidf-ngram-v1"):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
-        self.vectorizer: Optional[PureTfidfVectorizer] = None
+        self._st_model = None
+        self._tfidf: Optional[PureTfidfVectorizer] = None
+        self.dimension = 384
+        self._init_model()
+
+    def _init_model(self):
+        try:
+            from sentence_transformers import SentenceTransformer
+            self._st_model = SentenceTransformer(self.model_name)
+            self.dimension = 384
+        except Exception:
+            self._st_model = None
+            self._tfidf = PureTfidfVectorizer(min_df=1)
+            self.dimension = 0
 
     def fit_and_embed_corpus(self, texts: List[str]) -> np.ndarray:
-        self.vectorizer = PureTfidfVectorizer(min_df=1)
-        return self.vectorizer.fit_transform(texts)
+        if self._st_model is not None:
+            embeddings = self._st_model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+            self.dimension = embeddings.shape[1]
+            return np.ascontiguousarray(embeddings, dtype=np.float32)
+        
+        self._tfidf = PureTfidfVectorizer(min_df=1)
+        matrix = self._tfidf.fit_transform(texts)
+        self.dimension = matrix.shape[1] if matrix.size > 0 else 0
+        return matrix
 
     def embed_query(self, query: str) -> np.ndarray:
-        if self.vectorizer is None:
-            raise RuntimeError("Embedding model has not been fitted on any corpus yet.")
-        return self.vectorizer.transform([query])[0]
+        if self._st_model is not None:
+            embedding = self._st_model.encode([query], normalize_embeddings=True, show_progress_bar=False)[0]
+            return np.ascontiguousarray(embedding, dtype=np.float32)
+
+        if self._tfidf is not None:
+            return self._tfidf.transform([query])[0]
+
+        raise RuntimeError("Embedding model has not been initialized.")
 
 
 class VideoVectorStore:
     """
-    In-memory and cached vector store for a specific YouTube video.
+    In-memory and cached FAISS vector store for a specific YouTube video.
     """
 
-    def __init__(self, video_id: str, cache_dir: str = "./data/cache"):
+    def __init__(self, video_id: str, cache_dir: str = "./data/cache", model_name: str = "all-MiniLM-L6-v2"):
         self.video_id = video_id
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.chunks: List[StoredChunk] = []
         self.embeddings: Optional[np.ndarray] = None
-        self.embedder = EmbeddingProvider()
+        self.embedder = EmbeddingProvider(model_name=model_name)
+        self.faiss_index: Optional[FaissVectorIndex] = None
 
     @property
     def cache_path(self) -> Path:
@@ -174,7 +259,7 @@ class VideoVectorStore:
         return self.cache_path.exists()
 
     def build_from_chunks(self, chunks: List[Any]):
-        """Ingest chunk objects and build embedding space."""
+        """Ingest chunk objects, compute all-MiniLM-L6-v2 embeddings, and build FAISS index."""
         self.chunks = []
         texts = []
         for c in chunks:
@@ -192,37 +277,46 @@ class VideoVectorStore:
 
         if texts:
             self.embeddings = self.embedder.fit_and_embed_corpus(texts)
+            self.faiss_index = FaissVectorIndex(dimension=self.embedder.dimension)
+            self.faiss_index.add(self.embeddings)
         self.save_to_cache()
 
     def search_vector(self, query: str, top_k: int = 10) -> List[Tuple[StoredChunk, float]]:
-        """Dense / vector search by cosine similarity."""
-        if not self.chunks or self.embeddings is None:
+        """Dense / vector search by cosine similarity using FAISS Index."""
+        if not self.chunks:
             return []
 
         q_vec = self.embedder.embed_query(query)
-        # Cosine similarity (both rows and query are L2 normalized)
-        scores = np.dot(self.embeddings, q_vec)
-        
-        # Rank by score descending
-        ranked_indices = np.argsort(scores)[::-1]
-        results = []
-        for idx in ranked_indices[:top_k]:
-            score = float(scores[idx])
-            results.append((self.chunks[idx], score))
-        return results
+
+        # Use FAISS index if built, otherwise build or direct cosine
+        if self.faiss_index is None and self.embeddings is not None:
+            self.faiss_index = FaissVectorIndex(dimension=self.embeddings.shape[1])
+            self.faiss_index.add(self.embeddings)
+
+        if self.faiss_index is not None:
+            scores, indices = self.faiss_index.search(q_vec, top_k)
+            results = []
+            for score, idx in zip(scores, indices):
+                if 0 <= idx < len(self.chunks):
+                    results.append((self.chunks[idx], float(score)))
+            return results
+
+        return []
 
     def save_to_cache(self):
-        """Serialize chunks to disk cache for fast retrieval & skipping ingestion."""
+        """Serialize chunks and embeddings to disk cache for fast retrieval & skipping ingestion."""
         payload = {
             "video_id": self.video_id,
             "model_name": self.embedder.model_name,
+            "dimension": self.embedder.dimension,
             "chunks": [c.to_dict() for c in self.chunks],
+            "embeddings": self.embeddings.tolist() if self.embeddings is not None else [],
         }
         with open(self.cache_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2)
+            json.dump(payload, f)
 
     def load_from_cache(self) -> bool:
-        """Load from disk cache if present."""
+        """Load from disk cache if present and reconstruct FAISS index."""
         if not self.cache_path.exists():
             return False
 
@@ -232,9 +326,20 @@ class VideoVectorStore:
 
             self.video_id = data["video_id"]
             self.chunks = [StoredChunk.from_dict(d) for d in data.get("chunks", [])]
-            texts = [c.text for c in self.chunks]
-            if texts:
-                self.embeddings = self.embedder.fit_and_embed_corpus(texts)
+            raw_embs = data.get("embeddings", [])
+            
+            if raw_embs:
+                self.embeddings = np.array(raw_embs, dtype=np.float32)
+                dim = self.embeddings.shape[1] if self.embeddings.ndim > 1 else len(self.embeddings)
+                self.faiss_index = FaissVectorIndex(dimension=dim)
+                self.faiss_index.add(self.embeddings)
+            else:
+                texts = [c.text for c in self.chunks]
+                if texts:
+                    self.embeddings = self.embedder.fit_and_embed_corpus(texts)
+                    self.faiss_index = FaissVectorIndex(dimension=self.embedder.dimension)
+                    self.faiss_index.add(self.embeddings)
+
             return True
         except Exception:
             return False
