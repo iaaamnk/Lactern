@@ -83,6 +83,11 @@ body {
   font-weight: 500;
 }
 
+.version-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
 .ingest-bar-container {
   display: flex;
   flex-direction: column;
