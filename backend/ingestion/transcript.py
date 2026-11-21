@@ -153,7 +153,7 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
     """
     Tier 2 caption retrieval via yt-dlp.
     Directly extracts YouTube JSON3 / VTT timed text without downloading video or audio.
-    Crucial safeguard: Bypasses YouTube cloud IP blocks on Render/AWS.
+    Uses mobile player_client emulation to bypass YouTube HTTP 429 Too Many Requests on cloud IPs.
     """
     import yt_dlp
     import httpx
@@ -166,6 +166,14 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
         "skip_download": True,
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["ios", "android", "mweb", "web_embedded"]
+            }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+        },
     }
 
     try:
@@ -231,7 +239,7 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
 def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
     """
     Tier 3 Fallback: Runs speech-to-text with Whisper when video has zero captions.
-    Uses sys.executable -m yt_dlp to download raw audio without forced transcoding.
+    Uses mobile player_client to prevent HTTP 429 Too Many Requests rate-limits on cloud servers.
     """
     import sys
     import tempfile
@@ -266,7 +274,11 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
                 "-m",
                 "yt_dlp",
                 "-f",
-                "ba/b",  # Download best audio directly without transcoding
+                "ba/b",
+                "--extractor-args",
+                "youtube:player_client=ios,android,mweb,web_embedded",
+                "--user-agent",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
                 "-o",
                 output_template,
                 f"https://www.youtube.com/watch?v={video_id}",
