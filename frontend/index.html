@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Video RAG with Clickable Timestamps</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-icon">▶</span>
+        <h1>YouTube Video RAG <span class="badge">Timestamp-Aware</span></h1>
+      </div>
+      <div class="ingest-bar">
+        <input 
+          type="text" 
+          id="video-url-input" 
+          placeholder="Paste YouTube URL or Video ID (e.g. https://www.youtube.com/watch?v=...)" 
+          value="https://www.youtube.com/watch?v=jNQXAC9IVRw"
+        />
+        <button id="ingest-btn" class="btn btn-primary">
+          <span class="btn-text">Ingest & Index</span>
+          <span class="spinner hidden"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Ingestion Notification Banner -->
+    <div id="status-banner" class="status-banner hidden">
+      <span id="status-message">Ready</span>
+    </div>
+
+    <!-- Main Content Workspace -->
+    <main class="main-layout">
+      <!-- Left Panel: Player & Fallback & Transcript -->
+      <section class="player-panel">
+        <div class="video-container">
+          <div id="player"></div>
+          <div id="player-fallback" class="player-fallback hidden">
+            <div class="fallback-card">
+              <h3>Video Cannot Be Embedded</h3>
+              <p>The creator has disabled third-party embedding for this video.</p>
+              <a id="fallback-link" href="#" target="_blank" rel="noopener" class="btn btn-secondary">
+                Open on YouTube at Timestamp ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="player-controls-info">
+          <div class="player-status">
+            <span class="status-dot" id="player-status-dot"></span>
+            <span id="player-status-text">Player Initializing...</span>
+          </div>
+          <div class="playback-timer">
+            <span id="current-time">00:00</span> / <span id="total-duration">--:--</span>
+          </div>
+        </div>
+
+        <!-- Transcript Viewer with auto-scroll -->
+        <div class="transcript-section">
+          <div class="section-header">
+            <h3>Indexed Transcript Chunks</h3>
+            <span id="chunk-counter" class="chunk-badge">0 chunks</span>
+          </div>
+          <div id="transcript-list" class="transcript-list">
+            <p class="empty-state">Ingest a video to view synchronized transcript chunks.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Q&A Chat -->
+      <section class="chat-panel">
+        <div class="chat-header">
+          <h2>Ask About This Video</h2>
+          <span class="rules-hint">LLM cites chunk IDs • Backend supplies verified timestamps</span>
+        </div>
+
+        <div id="chat-messages" class="chat-messages">
+          <div class="message assistant-msg">
+            <div class="msg-bubble">
+              <p>Welcome! Ingest any YouTube video above to index its transcript with time-aware chunks. Once indexed, you can ask questions and tap timestamp chips to jump directly to exact moments with a smooth lead-in.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Bar -->
+        <form id="chat-form" class="chat-input-area">
+          <input 
+            type="text" 
+            id="question-input" 
+            placeholder="Ask a question about the video..." 
+            autocomplete="off"
+            disabled
+          />
+          <button type="submit" id="send-btn" class="btn btn-send" disabled>
+            <span>Ask</span>
+          </button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- YouTube IFrame API Script -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>

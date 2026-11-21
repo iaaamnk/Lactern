@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.obj
+*.dll
+*.dylib
+
+# Binaries & Virtual Environments
+bin/
+*.exe
+env/
+venv/
+ENV/
+.venv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# App Data & Cache
+data/cache/*.json
+!data/cache/.gitkeep
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS generated
+.DS_Store
+Thumbs.db
+desktop.ini
