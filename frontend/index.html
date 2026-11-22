@@ -842,8 +842,8 @@
   <h1>Ask any video, <em>land on the exact second.</em></h1>
   <div class="bar">
     <input id="url" value="https://www.youtube.com/watch?v=0wp5Z3z4bjM" placeholder="Paste a YouTube link">
-    <button class="btn" id="toggle-drawer" type="button">Paste text</button>
-    <button class="btn solid" id="ingest" type="button">Ingest &amp; index</button>
+    <button class="btn" id="toggle-drawer" type="button" onclick="toggleDrawer()">Paste text</button>
+    <button class="btn solid" id="ingest" type="button" onclick="ingestVideo()">Ingest &amp; index</button>
   </div>
   
   <!-- Real-time Ingestion Progress Card -->
@@ -874,16 +874,16 @@
   <div class="drawer hidden" id="drawer">
     <div class="drawer-header">
       <span>Manual Transcript / Notes Fallback (bypasses YouTube cloud rate limits)</span>
-      <button id="close-drawer" class="drawer-close" type="button">✕</button>
+      <button id="close-drawer" class="drawer-close" type="button" onclick="closeDrawer()">✕</button>
     </div>
     <textarea id="manual-text" placeholder="Paste YouTube transcript, timestamped notes [01:23], or lecture notes here..."></textarea>
   </div>
 
   <div class="demos">Try
-    <a data-id="0wp5Z3z4bjM">Indian Food (Best)</a>
-    <a data-id="GvrIe41E7xA">Big Bang Theory</a>
-    <a data-id="jNQXAC9IVRw">Me at the Zoo</a>
-    <a data-id="LxCjscf2PjA">MasterChef</a>
+    <a data-id="0wp5Z3z4bjM" onclick="loadDemo('0wp5Z3z4bjM')">Indian Food (Best)</a>
+    <a data-id="GvrIe41E7xA" onclick="loadDemo('GvrIe41E7xA')">Big Bang Theory</a>
+    <a data-id="jNQXAC9IVRw" onclick="loadDemo('jNQXAC9IVRw')">Me at the Zoo</a>
+    <a data-id="LxCjscf2PjA" onclick="loadDemo('LxCjscf2PjA')">MasterChef</a>
   </div>
   <div class="status" id="status"><b>●</b> Video indexed successfully — 30 chunks</div>
 </section>
@@ -892,7 +892,7 @@
   <div>
     <div class="player" id="player">
       <div id="yt-player"></div>
-      <div class="play" id="play" title="Play Video">
+      <div class="play" id="play" title="Play Video" onclick="handlePlayClick()">
         <svg viewBox="0 0 24 24"><path d="M5 3l15 9-15 9z"/></svg>
       </div>
       <div class="caption" id="caption">
@@ -931,15 +931,15 @@
       <a>How is the smoked lamb neck curry made?</a>
       <a>What makes the avocado bhatura puff up?</a>
     </div>
-    <form class="ask" id="form">
+    <form class="ask" id="form" onsubmit="handleChatSubmit(event)">
       <input id="q" placeholder="Ask a question about this video…" autocomplete="off">
-      <button type="submit" id="send-btn">→</button>
+      <button type="submit" id="send-btn" onclick="handleChatSubmit(event)">→</button>
     </form>
   </aside>
 </main>
 
 <!-- YouTube IFrame API -->
 <script src="https://www.youtube.com/iframe_api"></script>
-<script src="app.js?v=3.5"></script>
+<script src="app.js?v=4.0"></script>
 </body>
 </html>

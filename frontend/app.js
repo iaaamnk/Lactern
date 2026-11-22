@@ -1,11 +1,18 @@
 // Backend API Configuration:
-// When frontend is hosted on Cloudflare Pages (*.pages.dev) or a custom domain, route API calls to Render.
+// When frontend is hosted on Cloudflare Pages (*.pages.dev) or custom domain, route API calls to Render.
+let customBackend = "";
+try {
+  customBackend = window.localStorage ? (window.localStorage.getItem("RENDER_BACKEND_URL") || "") : "";
+} catch (e) {
+  console.warn("Storage access warning:", e);
+}
+
 const DEFAULT_RENDER_BACKEND = "https://lactern.onrender.com";
 const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const isRender = window.location.hostname.endsWith("onrender.com");
 const API_BASE = (isRender || (isLocal && (window.location.port === "8000" || window.location.port === "10000")))
   ? ""
-  : (localStorage.getItem("RENDER_BACKEND_URL") || DEFAULT_RENDER_BACKEND);
+  : (customBackend || DEFAULT_RENDER_BACKEND);
 
 // State
 let player = null;
@@ -16,42 +23,11 @@ let conversationHistory = [];
 let wordTimer = null;
 let progressTimer = null;
 let currentChunkIndex = -1;
+let ingestTimerInterval = null;
+let ingestStartTime = 0;
 
-// DOM Elements
+// Dynamic DOM getter
 const $ = (id) => document.getElementById(id);
-const urlInput = $("url");
-const ingestBtn = $("ingest");
-const toggleDrawerBtn = $("toggle-drawer");
-const drawer = $("drawer");
-const closeDrawerBtn = $("close-drawer");
-const manualTextInput = $("manual-text");
-const statusEl = $("status");
-const playerContainer = $("player");
-const playBtn = $("play");
-const captionEl = $("caption");
-const playerFallback = $("player-fallback");
-const fallbackLink = $("fallback-link");
-const trackEl = $("track");
-const fillEl = $("fill");
-const playerStatus = $("player-status");
-const clockEl = $("clock");
-const chunkCountEl = $("chunk-count");
-const listEl = $("list");
-const msgsEl = $("msgs");
-const sugEl = $("sug");
-const chatForm = $("form");
-const questionInput = $("q");
-const sendBtn = $("send-btn");
-
-// Progress Bar DOM Elements
-const ingestProgress = $("ingest-progress");
-const progressStageText = $("progress-stage-text");
-const progressTimer = $("progress-timer");
-const progressBarFill = $("progress-bar-fill");
-const pstep1 = $("pstep-1");
-const pstep2 = $("pstep-2");
-const pstep3 = $("pstep-3");
-const progressHint = $("progress-hint");
 
 // Formatting helper: seconds -> mm:ss
 function fmt(seconds) {
@@ -61,52 +37,59 @@ function fmt(seconds) {
   return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 }
 
-// 1. YouTube IFrame API
-function onYouTubeIframeAPIReady() {
-  player = new YT.Player("yt-player", {
-    height: "100%",
-    width: "100%",
-    videoId: "0wp5Z3z4bjM", // Default embeddable starter video
-    playerVars: {
-      playsinline: 1,
-      modestbranding: 1,
-      rel: 0,
-      enablejsapi: 1,
-      origin: window.location.origin,
-    },
-    events: {
-      onReady: onPlayerReady,
-      onStateChange: onPlayerStateChange,
-      onError: onPlayerError,
-    },
-  });
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
 }
+
+// 1. YouTube IFrame API
+window.onYouTubeIframeAPIReady = function () {
+  try {
+    player = new YT.Player("yt-player", {
+      height: "100%",
+      width: "100%",
+      videoId: currentVideoId || "0wp5Z3z4bjM",
+      playerVars: {
+        playsinline: 1,
+        modestbranding: 1,
+        rel: 0,
+        enablejsapi: 1,
+        origin: window.location.origin,
+      },
+      events: {
+        onReady: onPlayerReady,
+        onStateChange: onPlayerStateChange,
+        onError: onPlayerError,
+      },
+    });
+  } catch (err) {
+    console.warn("YouTube player init error:", err);
+  }
+};
 
 function onPlayerReady(event) {
   isPlayerReady = true;
-  playerStatus.textContent = "Player ready";
+  const pStatus = $("player-status");
+  if (pStatus) pStatus.textContent = "Player ready";
   updateClock();
-  clearInterval(progressTimer);
+  if (progressTimer) clearInterval(progressTimer);
   progressTimer = setInterval(updatePlaybackState, 400);
-
-  // Trigger default initial video ingestion in background
-  if (!currentVideoId && urlInput.value) {
-    ingestVideo();
-  }
 }
 
 function onPlayerStateChange(event) {
   updateClock();
+  const pContainer = $("player");
+  if (!pContainer) return;
   if (event.data === YT.PlayerState.PLAYING) {
-    playerContainer.classList.add("playing");
+    pContainer.classList.add("playing");
   } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
-    playerContainer.classList.remove("playing");
+    pContainer.classList.remove("playing");
   }
 }
 
 function onPlayerError(event) {
-  console.warn("YouTube Player event error:", event.data);
-  // Errors 101 or 150: embedding disabled by video owner
+  console.warn("YouTube Player error:", event.data);
   if (event.data === 101 || event.data === 150) {
     showFallback(0);
   }
@@ -114,20 +97,30 @@ function onPlayerError(event) {
 
 function showFallback(seekSec) {
   if (!currentVideoId) return;
-  const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
-  fallbackLink.href = watchUrl;
-  playerFallback.classList.remove("hidden");
+  const fallbackLink = $("fallback-link");
+  const playerFallback = $("player-fallback");
+  if (fallbackLink) {
+    fallbackLink.href = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
+  }
+  if (playerFallback) playerFallback.classList.remove("hidden");
 }
 
 function hideFallback() {
-  playerFallback.classList.add("hidden");
+  const playerFallback = $("player-fallback");
+  if (playerFallback) playerFallback.classList.add("hidden");
 }
 
-// Play button click overlay
-playBtn.onclick = () => {
+window.handlePlayClick = function () {
+  const pContainer = $("player");
   if (player && player.playVideo) {
-    player.playVideo();
-    playerContainer.classList.add("playing");
+    try {
+      player.playVideo();
+      if (pContainer) pContainer.classList.add("playing");
+    } catch (e) {
+      showFallback(0);
+    }
+  } else {
+    showFallback(0);
   }
 };
 
@@ -137,8 +130,10 @@ function updateClock() {
   try {
     const cur = player.getCurrentTime ? player.getCurrentTime() : 0;
     const dur = player.getDuration() || 0;
-    clockEl.textContent = `${fmt(cur)} / ${fmt(dur)}`;
-    if (dur > 0) {
+    const clockEl = $("clock");
+    const fillEl = $("fill");
+    if (clockEl) clockEl.textContent = `${fmt(cur)} / ${fmt(dur)}`;
+    if (fillEl && dur > 0) {
       fillEl.style.width = `${Math.min(100, (cur / dur) * 100)}%`;
     }
   } catch (e) {}
@@ -149,10 +144,8 @@ function updatePlaybackState() {
   try {
     const cur = player.getCurrentTime();
     updateClock();
-
     if (currentChunks.length === 0) return;
 
-    // Detect active chunk
     let activeIdx = -1;
     for (let i = 0; i < currentChunks.length; i++) {
       if (cur >= currentChunks[i].start_sec && cur <= currentChunks[i].end_sec) {
@@ -170,7 +163,8 @@ function updatePlaybackState() {
 }
 
 function showKaraokeCaption(idx) {
-  if (!currentChunks[idx]) return;
+  const captionEl = $("caption");
+  if (!captionEl || !currentChunks[idx]) return;
   clearInterval(wordTimer);
   const text = currentChunks[idx].text;
   const words = text.split(" ");
@@ -204,10 +198,11 @@ function highlightChunk(idx, scrollIntoView = true) {
   });
 }
 
-// 3. Seeking & Timeline
 window.seekToTimestamp = function (seekSec, originalStartSec) {
-  // If video owner disabled third-party embedding (Error 150)
-  if (!playerFallback.classList.contains("hidden")) {
+  const playerFallback = $("player-fallback");
+  const pContainer = $("player");
+  const statusEl = $("status");
+  if (playerFallback && !playerFallback.classList.contains("hidden")) {
     showFallback(seekSec);
     const watchUrl = `https://www.youtube.com/watch?v=${currentVideoId}&t=${Math.floor(seekSec)}s`;
     window.open(watchUrl, "_blank");
@@ -215,16 +210,15 @@ window.seekToTimestamp = function (seekSec, originalStartSec) {
   }
 
   if (!isPlayerReady || !player) {
-    statusEl.innerHTML = `<b>●</b> Waiting for player to initialize…`;
+    if (statusEl) statusEl.innerHTML = `<b>●</b> Waiting for player to initialize…`;
     return;
   }
 
   try {
     player.seekTo(seekSec, true);
     player.playVideo();
-    playerContainer.classList.add("playing");
+    if (pContainer) pContainer.classList.add("playing");
 
-    // Match chunk
     const idx = currentChunks.findIndex(
       (c) => Math.abs(c.start_sec - originalStartSec) < 1.5 || (seekSec >= c.start_sec && seekSec <= c.end_sec)
     );
@@ -239,31 +233,26 @@ window.seekToTimestamp = function (seekSec, originalStartSec) {
   }
 };
 
-// Timeline track click to seek
-trackEl.onclick = (e) => {
-  if (!player || !player.getDuration) return;
-  const dur = player.getDuration();
-  if (!dur || dur <= 0) return;
-  const rect = trackEl.getBoundingClientRect();
-  const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const targetSec = ratio * dur;
-  seekToTimestamp(targetSec, targetSec);
-};
-
-// 4. Ingestion Flow & Progress Animation
-let ingestTimerInterval = null;
-let ingestStartTime = 0;
-
-function startIngestProgress() {
+// 3. Ingestion Flow & Progress Animation
+window.startIngestProgress = function () {
   if (ingestTimerInterval) clearInterval(ingestTimerInterval);
   ingestStartTime = Date.now();
-  
+
+  const ingestProgress = $("ingest-progress");
+  const progressHint = $("progress-hint");
+  const progressBarFill = $("progress-bar-fill");
+  const progressTimer = $("progress-timer");
+  const progressStageText = $("progress-stage-text");
+  const pstep1 = $("pstep-1");
+  const pstep2 = $("pstep-2");
+  const pstep3 = $("pstep-3");
+
   if (ingestProgress) ingestProgress.classList.remove("hidden");
   if (progressHint) progressHint.classList.add("hidden");
   if (progressBarFill) progressBarFill.style.width = "12%";
   if (progressTimer) progressTimer.textContent = "00:00";
   if (progressStageText) progressStageText.textContent = "Connecting & extracting captions…";
-  
+
   if (pstep1) pstep1.className = "p-step active";
   if (pstep2) pstep2.className = "p-step";
   if (pstep3) pstep3.className = "p-step";
@@ -272,7 +261,6 @@ function startIngestProgress() {
     const elapsedSec = Math.floor((Date.now() - ingestStartTime) / 1000);
     if (progressTimer) progressTimer.textContent = fmt(elapsedSec);
 
-    // Dynamic stage progression
     if (elapsedSec < 5) {
       if (progressBarFill) progressBarFill.style.width = `${Math.min(45, 12 + elapsedSec * 7)}%`;
     } else if (elapsedSec >= 5 && elapsedSec < 10) {
@@ -290,19 +278,25 @@ function startIngestProgress() {
       if (progressBarFill) progressBarFill.style.width = `${Math.min(94, 85 + (elapsedSec - 15) * 1.5)}%`;
     }
 
-    // If waiting longer than 18 seconds, reveal helpful fallback hint
     if (elapsedSec >= 18 && progressHint) {
       progressHint.classList.remove("hidden");
     }
   }, 250);
-}
+};
 
-function stopIngestProgress(success, chunkCount = 0) {
+window.stopIngestProgress = function (success, chunkCount = 0) {
   if (ingestTimerInterval) {
     clearInterval(ingestTimerInterval);
     ingestTimerInterval = null;
   }
-  
+
+  const ingestProgress = $("ingest-progress");
+  const progressBarFill = $("progress-bar-fill");
+  const progressStageText = $("progress-stage-text");
+  const pstep1 = $("pstep-1");
+  const pstep2 = $("pstep-2");
+  const pstep3 = $("pstep-3");
+
   if (success) {
     const totalSec = ((Date.now() - ingestStartTime) / 1000).toFixed(1);
     if (progressBarFill) progressBarFill.style.width = "100%";
@@ -318,20 +312,43 @@ function stopIngestProgress(success, chunkCount = 0) {
   } else {
     if (ingestProgress) ingestProgress.classList.add("hidden");
   }
-}
+};
 
-async function ingestVideo() {
+window.setIngestLoading = function (isLoading) {
+  const ingestBtn = $("ingest");
+  if (ingestBtn) {
+    ingestBtn.disabled = isLoading;
+    ingestBtn.textContent = isLoading ? "Indexing…" : "Ingest & index";
+  }
+};
+
+window.ingestVideo = async function () {
+  const urlInput = $("url");
+  const drawer = $("drawer");
+  const manualTextInput = $("manual-text");
+  const statusEl = $("status");
+  const questionInput = $("q");
+  const sendBtn = $("send-btn");
+
+  if (!urlInput) return;
   let url = urlInput.value.trim().replace(/^<|>$/g, "").trim();
-  if (!url) return;
+  if (!url) {
+    if (statusEl) {
+      statusEl.className = "status error";
+      statusEl.innerHTML = `<b>●</b> Please paste a YouTube link first!`;
+    }
+    return;
+  }
 
-  // Only pass manual text if user specifically opened the manual text drawer
   const isDrawerOpen = drawer && !drawer.classList.contains("hidden");
   const manualText = (isDrawerOpen && manualTextInput) ? manualTextInput.value.trim() : "";
 
   setIngestLoading(true);
   startIngestProgress();
-  statusEl.className = "status";
-  statusEl.innerHTML = `<b>●</b> Indexing video transcript…`;
+  if (statusEl) {
+    statusEl.className = "status";
+    statusEl.innerHTML = `<b>●</b> Indexing video transcript…`;
+  }
 
   try {
     const payload = { url };
@@ -344,21 +361,22 @@ async function ingestVideo() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ detail: "Ingestion failed." }));
-      throw new Error(err.detail || "Ingestion failed.");
+      const err = await resp.json().catch(() => ({ detail: "Ingestion request failed." }));
+      throw new Error(err.detail || `Server returned status ${resp.status}`);
     }
 
     const data = await resp.json();
     currentVideoId = data.video_id;
 
-    statusEl.className = "status";
-    statusEl.innerHTML = `<b>●</b> Video indexed successfully — ${data.chunk_count} chunks ${data.cached ? "[Cached]" : ""}`;
-    drawer.classList.add("hidden");
+    if (statusEl) {
+      statusEl.className = "status";
+      statusEl.innerHTML = `<b>●</b> Video indexed successfully — ${data.chunk_count} chunks ${data.cached ? "[Cached]" : ""}`;
+    }
+    if (drawer) drawer.classList.add("hidden");
     if (manualTextInput) manualTextInput.value = "";
 
     stopIngestProgress(true, data.chunk_count);
 
-    // Load video in YouTube player
     hideFallback();
     if (player && player.loadVideoById) {
       player.loadVideoById(currentVideoId);
@@ -366,28 +384,27 @@ async function ingestVideo() {
       player.cueVideoById(currentVideoId);
     }
 
-    // Load transcript chunks
     await loadChunks(currentVideoId);
 
-    // Enable chat inputs
-    questionInput.disabled = false;
-    sendBtn.disabled = false;
-    questionInput.focus();
+    if (questionInput) questionInput.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
+    if (questionInput) questionInput.focus();
 
-    // Populate suggested questions
     updateSuggestions(currentVideoId);
   } catch (err) {
     stopIngestProgress(false);
-    statusEl.className = "status error";
-    statusEl.innerHTML = `<b>●</b> ${escapeHtml(err.message)}`;
-    drawer.classList.remove("hidden");
+    if (statusEl) {
+      statusEl.className = "status error";
+      statusEl.innerHTML = `<b>●</b> ${escapeHtml(err.message)}`;
+    }
+    if (drawer) drawer.classList.remove("hidden");
     if (manualTextInput) manualTextInput.focus();
   } finally {
     setIngestLoading(false);
   }
-}
+};
 
-async function loadChunks(videoId) {
+window.loadChunks = async function (videoId) {
   try {
     const resp = await fetch(`${API_BASE}/api/chunks/${videoId}`);
     if (!resp.ok) return;
@@ -396,14 +413,20 @@ async function loadChunks(videoId) {
   } catch (err) {
     console.error("Failed to load chunks:", err);
   }
-}
+};
 
 function renderTranscript() {
-  chunkCountEl.textContent = `${currentChunks.length} chunks`;
+  const chunkCountEl = $("chunk-count");
+  const listEl = $("list");
+  const trackEl = $("track");
+  if (!listEl) return;
+
+  if (chunkCountEl) chunkCountEl.textContent = `${currentChunks.length} chunks`;
   listEl.innerHTML = "";
-  
-  // Clear existing notches on track
-  trackEl.querySelectorAll("i").forEach((el) => el.remove());
+
+  if (trackEl) {
+    trackEl.querySelectorAll("i").forEach((el) => el.remove());
+  }
 
   if (!currentChunks.length) {
     listEl.innerHTML = `<div style="padding: 24px 0; color: var(--mute); font-size: 14px;">No transcript chunks available.</div>`;
@@ -424,44 +447,61 @@ function renderTranscript() {
     };
     listEl.appendChild(item);
 
-    // Track notch
-    if (dur > 0) {
+    if (trackEl && dur > 0) {
       const notch = document.createElement("i");
       notch.style.left = `${Math.min(100, (c.start_sec / dur) * 100)}%`;
       trackEl.appendChild(notch);
     }
   });
 
-  // Display initial caption
   if (currentChunks.length > 0) {
     showKaraokeCaption(0);
   }
 }
 
-function setIngestLoading(isLoading) {
-  ingestBtn.disabled = isLoading;
-  ingestBtn.textContent = isLoading ? "Indexing…" : "Ingest & index";
-}
+// 4. Drawer & Demo Handlers
+window.toggleDrawer = function () {
+  const drawer = $("drawer");
+  const manualTextInput = $("manual-text");
+  if (!drawer) return;
+  drawer.classList.toggle("hidden");
+  if (!drawer.classList.contains("hidden") && manualTextInput) {
+    manualTextInput.focus();
+  }
+};
 
-// 5. Chat Flow
-function addMsg(cls, html) {
+window.closeDrawer = function () {
+  const drawer = $("drawer");
+  if (drawer) drawer.classList.add("hidden");
+};
+
+window.loadDemo = function (id) {
+  const urlInput = $("url");
+  if (urlInput && id) {
+    urlInput.value = `https://www.youtube.com/watch?v=${id}`;
+    ingestVideo();
+  }
+};
+
+// 5. Chat Engine
+window.addMsg = function (cls, html) {
+  const msgsEl = $("msgs");
+  if (!msgsEl) return null;
   const m = document.createElement("div");
   m.className = "m " + cls;
   m.innerHTML = html;
   msgsEl.appendChild(m);
   msgsEl.scrollTop = msgsEl.scrollHeight;
   return m;
-}
+};
 
-// Initial welcome message
-addMsg("b", "<small>Assistant</small>Ask me anything — I’ll take you to the exact second.");
-
-async function askQuestion(q) {
+window.askQuestion = async function (q) {
   if (!q) return;
-
-  if (!currentVideoId) {
-    const match = urlInput.value.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-    currentVideoId = match ? match[1] : "LxCjscf2PjA";
+  const questionInput = $("q");
+  const urlInput = $("url");
+  if (!currentVideoId && urlInput && urlInput.value) {
+    const match = urlInput.value.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})/);
+    currentVideoId = match ? match[1] : "0wp5Z3z4bjM";
   }
 
   addMsg("u", escapeHtml(q));
@@ -479,12 +519,12 @@ async function askQuestion(q) {
     });
 
     if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.detail || "Error generating answer.");
+      const err = await resp.json().catch(() => ({ detail: "Error generating answer." }));
+      throw new Error(err.detail || `Server returned error ${resp.status}`);
     }
 
     const data = await resp.json();
-    loading.remove();
+    if (loading) loading.remove();
 
     let citationsHtml = "";
     if (data.citations && data.citations.length > 0) {
@@ -503,13 +543,15 @@ async function askQuestion(q) {
     addMsg("b", `<small>According to the video</small>${escapeHtml(data.answer)}${citationsHtml}`);
     conversationHistory.push({ question: q, answer: data.answer });
   } catch (err) {
-    loading.remove();
+    if (loading) loading.remove();
     addMsg("b", `<small>Error</small><span style="color:#ef4444;">${escapeHtml(err.message)}</span>`);
   }
-}
+};
 
-chatForm.onsubmit = (e) => {
-  e.preventDefault();
+window.handleChatSubmit = function (e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const questionInput = $("q");
+  if (!questionInput) return;
   const q = questionInput.value.trim();
   if (q) {
     questionInput.value = "";
@@ -517,7 +559,6 @@ chatForm.onsubmit = (e) => {
   }
 };
 
-// 6. Suggestions Engine
 const SUGGESTIONS_MAP = {
   "0wp5Z3z4bjM": ["What dishes are cooked in this video?", "How is the smoked lamb neck curry made?", "What makes the avocado bhatura puff up?"],
   GvrIe41E7xA: ["Why does Sheldon refuse to answer the phone?", "What game are Leonard and Sheldon playing?", "Why is Sheldon angry at Tam?"],
@@ -525,7 +566,9 @@ const SUGGESTIONS_MAP = {
   jNQXAC9IVRw: ["What is cool about elephants?", "Where was the video filmed?", "What does the speaker say about trunks?"],
 };
 
-function updateSuggestions(vid) {
+window.updateSuggestions = function (vid) {
+  const sugEl = $("sug");
+  if (!sugEl) return;
   sugEl.innerHTML = "";
   const suggestions = SUGGESTIONS_MAP[vid] || [
     "What is the main topic?",
@@ -538,52 +581,59 @@ function updateSuggestions(vid) {
     a.onclick = () => askQuestion(text);
     sugEl.appendChild(a);
   });
-}
-
-// 7. Demo Chips & Drawer Handlers
-document.querySelectorAll(".demos a").forEach((a) => {
-  a.onclick = () => {
-    const id = a.dataset.id;
-    if (id) {
-      urlInput.value = `https://www.youtube.com/watch?v=${id}`;
-      ingestVideo();
-    }
-  };
-});
-
-toggleDrawerBtn.onclick = () => {
-  drawer.classList.toggle("hidden");
-  if (!drawer.classList.contains("hidden")) {
-    manualTextInput.focus();
-  }
 };
 
-closeDrawerBtn.onclick = () => {
-  drawer.classList.add("hidden");
-};
+// 6. Initialization & Global Wire-up
+function init() {
+  const playBtn = $("play");
+  const trackEl = $("track");
+  const chatForm = $("form");
+  const urlInput = $("url");
+  const toggleDrawerBtn = $("toggle-drawer");
+  const closeDrawerBtn = $("close-drawer");
+  const ingestBtn = $("ingest");
 
-ingestBtn.onclick = () => ingestVideo();
+  if (playBtn) playBtn.onclick = handlePlayClick;
+  if (toggleDrawerBtn) toggleDrawerBtn.onclick = toggleDrawer;
+  if (closeDrawerBtn) closeDrawerBtn.onclick = closeDrawer;
+  if (ingestBtn) ingestBtn.onclick = ingestVideo;
 
-urlInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    ingestVideo();
+  if (urlInput) {
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        ingestVideo();
+      }
+    });
   }
-});
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str || "";
-  return div.innerHTML;
-}
+  if (trackEl) {
+    trackEl.onclick = (e) => {
+      if (!player || !player.getDuration) return;
+      const dur = player.getDuration();
+      if (!dur || dur <= 0) return;
+      const rect = trackEl.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const targetSec = ratio * dur;
+      seekToTimestamp(targetSec, targetSec);
+    };
+  }
 
-// Immediate boot on DOM ready so page is never empty or bland
-window.addEventListener("DOMContentLoaded", () => {
+  if (chatForm) {
+    chatForm.onsubmit = handleChatSubmit;
+  }
+
+  document.querySelectorAll(".demos a").forEach((a) => {
+    a.onclick = () => {
+      const id = a.dataset.id;
+      if (id) loadDemo(id);
+    };
+  });
+
   currentVideoId = "0wp5Z3z4bjM";
   updateSuggestions("0wp5Z3z4bjM");
   loadChunks("0wp5Z3z4bjM");
 
-  // If running from Cloudflare Pages or external host, ping Render backend to warm it up
   if (API_BASE) {
     fetch(`${API_BASE}/health`)
       .then((r) => r.json())
@@ -592,5 +642,11 @@ window.addEventListener("DOMContentLoaded", () => {
         console.log("Render backend is waking up (takes ~30s on free tier)...");
       });
   }
-});
+}
 
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+window.addEventListener("load", init);
