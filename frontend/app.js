@@ -264,22 +264,25 @@ function startIngestProgress() {
     if (progressTimer) progressTimer.textContent = fmt(elapsedSec);
 
     // Dynamic stage progression
-    if (elapsedSec >= 1 && elapsedSec < 3) {
-      if (progressBarFill) progressBarFill.style.width = `${Math.min(45, 15 + elapsedSec * 10)}%`;
-    } else if (elapsedSec >= 3 && elapsedSec < 6) {
+    if (elapsedSec < 5) {
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(45, 12 + elapsedSec * 7)}%`;
+    } else if (elapsedSec >= 5 && elapsedSec < 10) {
+      if (progressStageText) progressStageText.textContent = "Extracting captions & subtitles…";
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(65, 45 + (elapsedSec - 5) * 4)}%`;
+    } else if (elapsedSec >= 10 && elapsedSec < 15) {
       if (pstep1) pstep1.className = "p-step done";
       if (pstep2) pstep2.className = "p-step active";
       if (progressStageText) progressStageText.textContent = "Segmenting transcript into timestamped chunks…";
-      if (progressBarFill) progressBarFill.style.width = `${Math.min(75, 45 + (elapsedSec - 3) * 10)}%`;
-    } else if (elapsedSec >= 6) {
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(85, 65 + (elapsedSec - 10) * 4)}%`;
+    } else if (elapsedSec >= 15) {
       if (pstep2) pstep2.className = "p-step done";
       if (pstep3) pstep3.className = "p-step active";
       if (progressStageText) progressStageText.textContent = "Computing semantic embeddings & indexing…";
-      if (progressBarFill) progressBarFill.style.width = `${Math.min(94, 75 + (elapsedSec - 6) * 3)}%`;
+      if (progressBarFill) progressBarFill.style.width = `${Math.min(94, 85 + (elapsedSec - 15) * 1.5)}%`;
     }
 
-    // If waiting longer than 10 seconds, reveal helpful fallback hint
-    if (elapsedSec >= 10 && progressHint) {
+    // If waiting longer than 18 seconds, reveal helpful fallback hint
+    if (elapsedSec >= 18 && progressHint) {
       progressHint.classList.remove("hidden");
     }
   }, 250);
@@ -309,10 +312,13 @@ function stopIngestProgress(success, chunkCount = 0) {
 }
 
 async function ingestVideo() {
-  const url = urlInput.value.trim();
+  let url = urlInput.value.trim().replace(/^<|>$/g, "").trim();
   if (!url) return;
 
-  const manualText = manualTextInput ? manualTextInput.value.trim() : "";
+  // Only pass manual text if user specifically opened the manual text drawer
+  const isDrawerOpen = drawer && !drawer.classList.contains("hidden");
+  const manualText = (isDrawerOpen && manualTextInput) ? manualTextInput.value.trim() : "";
+
   setIngestLoading(true);
   startIngestProgress();
   statusEl.className = "status";
@@ -339,6 +345,7 @@ async function ingestVideo() {
     statusEl.className = "status";
     statusEl.innerHTML = `<b>●</b> Video indexed successfully — ${data.chunk_count} chunks ${data.cached ? "[Cached]" : ""}`;
     drawer.classList.add("hidden");
+    if (manualTextInput) manualTextInput.value = "";
 
     stopIngestProgress(true, data.chunk_count);
 
@@ -547,6 +554,13 @@ closeDrawerBtn.onclick = () => {
 };
 
 ingestBtn.onclick = () => ingestVideo();
+
+urlInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    ingestVideo();
+  }
+});
 
 function escapeHtml(str) {
   const div = document.createElement("div");

@@ -26,7 +26,7 @@ class TranscriptSnippet:
 
 def extract_video_id(url_or_id: str) -> str:
     """Extract 11-character YouTube video ID from various URL formats or raw ID."""
-    url_or_id = url_or_id.strip()
+    url_or_id = url_or_id.strip().strip("<>\"'").strip()
     if re.match(r"^[a-zA-Z0-9_-]{11}$", url_or_id):
         return url_or_id
 
@@ -306,13 +306,13 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
 
     url = f"https://www.youtube.com/watch?v={video_id}"
 
-    # Try clients in order of cloud-IP resilience: android first, then ios
-    for client in ["android", "ios"]:
+    # Try clients in order of cloud-IP resilience: android, ios, mweb, web
+    for client in ["android", "ios", "mweb", "web"]:
         ydl_opts = {
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
-            "socket_timeout": 8,
+            "socket_timeout": 20,
             "extractor_args": {
                 "youtube": {
                     "player_client": [client],
@@ -438,10 +438,10 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
                 cmd.extend(["--ffmpeg-location", os.path.dirname(ffmpeg_bin)])
 
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             except subprocess.TimeoutExpired:
                 raise RuntimeError(
-                    f"Audio extraction timed out after 15s (YouTube rate limits cloud datacenter IPs). "
+                    f"Audio extraction timed out after 30s (YouTube rate limits cloud datacenter IPs). "
                     "Please click 'Paste text' above the player to index your transcript immediately!"
                 )
             if proc.returncode != 0:
@@ -498,7 +498,7 @@ def fetch_transcript_cloud_proxy(video_id: str) -> List[TranscriptSnippet]:
             "https://transcribeyoutube.com/api/transcript",
             json={"url": url},
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=3.0
+            timeout=22.0
         )
         if resp.status_code == 200:
             data = resp.json()
