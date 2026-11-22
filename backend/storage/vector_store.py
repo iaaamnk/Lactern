@@ -358,18 +358,20 @@ class VideoVectorStore:
             self.video_id = data["video_id"]
             self.chunks = [StoredChunk.from_dict(d) for d in data.get("chunks", [])]
             raw_embs = data.get("embeddings", [])
-            
-            if raw_embs:
-                self.embeddings = np.array(raw_embs, dtype=np.float32)
-                dim = self.embeddings.shape[1] if self.embeddings.ndim > 1 else len(self.embeddings)
-                self.faiss_index = FaissVectorIndex(dimension=dim)
-                self.faiss_index.add(self.embeddings)
-            else:
-                texts = [c.text for c in self.chunks]
+            cached_model = data.get("model_name", "")
+
+            texts = [c.text for c in self.chunks]
+            # If using TF-IDF or if cached model differs from current embedder, re-fit corpus vectors
+            if self.embedder._get_model() is None or cached_model != self.embedder.model_name or not raw_embs:
                 if texts:
                     self.embeddings = self.embedder.fit_and_embed_corpus(texts)
                     self.faiss_index = FaissVectorIndex(dimension=self.embedder.dimension)
                     self.faiss_index.add(self.embeddings)
+            else:
+                self.embeddings = np.array(raw_embs, dtype=np.float32)
+                dim = self.embeddings.shape[1] if self.embeddings.ndim > 1 else len(self.embeddings)
+                self.faiss_index = FaissVectorIndex(dimension=dim)
+                self.faiss_index.add(self.embeddings)
 
             return True
         except Exception:
