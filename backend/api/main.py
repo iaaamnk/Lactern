@@ -52,6 +52,11 @@ def get_or_load_store(video_id: str) -> Optional[VideoVectorStore]:
     return None
 
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "YouTube Video RAG Backend"}
+
+
 class IngestRequest(BaseModel):
     url: str = Field(..., description="YouTube URL or 11-char Video ID")
     transcript_text: Optional[str] = Field(default=None, description="Optional manual transcript paste fallback")

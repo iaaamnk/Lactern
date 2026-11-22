@@ -1,3 +1,12 @@
+// Backend API Configuration:
+// When frontend is hosted on Cloudflare Pages (*.pages.dev) or a custom domain, route API calls to Render.
+const DEFAULT_RENDER_BACKEND = "https://lactern.onrender.com";
+const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const isRender = window.location.hostname.endsWith("onrender.com");
+const API_BASE = (isRender || (isLocal && (window.location.port === "8000" || window.location.port === "10000")))
+  ? ""
+  : (localStorage.getItem("RENDER_BACKEND_URL") || DEFAULT_RENDER_BACKEND);
+
 // State
 let player = null;
 let isPlayerReady = false;
@@ -328,7 +337,7 @@ async function ingestVideo() {
     const payload = { url };
     if (manualText) payload.transcript_text = manualText;
 
-    const resp = await fetch("/api/ingest", {
+    const resp = await fetch(`${API_BASE}/api/ingest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -380,7 +389,7 @@ async function ingestVideo() {
 
 async function loadChunks(videoId) {
   try {
-    const resp = await fetch(`/api/chunks/${videoId}`);
+    const resp = await fetch(`${API_BASE}/api/chunks/${videoId}`);
     if (!resp.ok) return;
     currentChunks = await resp.json();
     renderTranscript();
@@ -459,7 +468,7 @@ async function askQuestion(q) {
   const loading = addMsg("b", '<div class="dots"><i></i><i></i><i></i></div>');
 
   try {
-    const resp = await fetch("/api/ask", {
+    const resp = await fetch(`${API_BASE}/api/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -573,5 +582,15 @@ window.addEventListener("DOMContentLoaded", () => {
   currentVideoId = "0wp5Z3z4bjM";
   updateSuggestions("0wp5Z3z4bjM");
   loadChunks("0wp5Z3z4bjM");
+
+  // If running from Cloudflare Pages or external host, ping Render backend to warm it up
+  if (API_BASE) {
+    fetch(`${API_BASE}/health`)
+      .then((r) => r.json())
+      .then((d) => console.log("Connected to backend:", d))
+      .catch(() => {
+        console.log("Render backend is waking up (takes ~30s on free tier)...");
+      });
+  }
 });
 
