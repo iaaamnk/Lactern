@@ -28,9 +28,10 @@ app = FastAPI(title="YouTube Video RAG with Clickable Timestamps", version="1.0.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 CACHE_DIR = os.getenv("CACHE_DIR", "./data/cache")

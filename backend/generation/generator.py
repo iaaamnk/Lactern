@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import json
 import os
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from backend.storage.vector_store import StoredChunk
 
 
@@ -127,10 +127,20 @@ class AnswerGenerator:
         }
         keywords = q_words - stops
 
+        def _stem(w: str) -> str:
+            if len(w) > 4:
+                for suffix in ("ing", "tion", "ment", "ed", "es", "s"):
+                    if w.endswith(suffix):
+                        return w[:-len(suffix)]
+            return w
+
+        stemmed_keywords = {_stem(k) for k in keywords}
+
         matching_chunks: List[Tuple[StoredChunk, int]] = []
         for c in chunks:
             c_words = set(re.findall(r"\w+", c.text.lower()))
-            overlap = keywords.intersection(c_words)
+            c_stemmed = {_stem(w) for w in c_words}
+            overlap = (keywords.intersection(c_words)) | (stemmed_keywords.intersection(c_stemmed))
             if overlap:
                 matching_chunks.append((c, len(overlap)))
 
@@ -171,7 +181,8 @@ class AnswerGenerator:
         scored_sentences = []
         for s in sentences:
             s_words = set(re.findall(r"\w+", s.lower()))
-            match_count = len(keywords.intersection(s_words))
+            s_stemmed = {_stem(w) for w in s_words}
+            match_count = len(keywords.intersection(s_words) | stemmed_keywords.intersection(s_stemmed))
             if match_count > 0:
                 scored_sentences.append((s, match_count))
 

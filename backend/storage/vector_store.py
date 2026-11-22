@@ -200,6 +200,9 @@ def get_shared_sentence_transformer(model_name: str = "all-MiniLM-L6-v2"):
     global _GLOBAL_ST_MODEL
     if _GLOBAL_ST_MODEL is not None:
         return _GLOBAL_ST_MODEL
+    # Bypass PyTorch completely on Render or memory-constrained containers to prevent 512MB OOM crash
+    if os.getenv("RENDER") or os.getenv("LOW_MEMORY_MODE", "false").lower() in ("true", "1"):
+        return None
     try:
         import torch
         # Cap PyTorch thread pool to 1 to prevent memory explosion on 512MB containers

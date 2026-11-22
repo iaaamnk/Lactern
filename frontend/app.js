@@ -46,17 +46,21 @@ function escapeHtml(str) {
 // 1. YouTube IFrame API
 window.onYouTubeIframeAPIReady = function () {
   try {
+    const playerVars = {
+      playsinline: 1,
+      modestbranding: 1,
+      rel: 0,
+      enablejsapi: 1,
+    };
+    if (window.location.origin && window.location.origin !== "null" && !window.location.origin.startsWith("file:")) {
+      playerVars.origin = window.location.origin;
+    }
+
     player = new YT.Player("yt-player", {
       height: "100%",
       width: "100%",
       videoId: currentVideoId || "0wp5Z3z4bjM",
-      playerVars: {
-        playsinline: 1,
-        modestbranding: 1,
-        rel: 0,
-        enablejsapi: 1,
-        origin: window.location.origin,
-      },
+      playerVars: playerVars,
       events: {
         onReady: onPlayerReady,
         onStateChange: onPlayerStateChange,
@@ -90,7 +94,8 @@ function onPlayerStateChange(event) {
 
 function onPlayerError(event) {
   console.warn("YouTube Player error:", event.data);
-  if (event.data === 101 || event.data === 150) {
+  // 101/150: Embed disabled by owner; 2/100: Invalid video ID; 5: HTML5 error
+  if (event.data === 101 || event.data === 150 || event.data === 2 || event.data === 5 || event.data === 100) {
     showFallback(0);
   }
 }
@@ -361,7 +366,7 @@ window.ingestVideo = async function () {
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ detail: "Ingestion request failed." }));
+      const err = await resp.json().catch(() => ({ detail: `Server error (${resp.status}). If waking up, please retry in a few seconds.` }));
       throw new Error(err.detail || `Server returned status ${resp.status}`);
     }
 
@@ -393,9 +398,13 @@ window.ingestVideo = async function () {
     updateSuggestions(currentVideoId);
   } catch (err) {
     stopIngestProgress(false);
+    let msg = err.message || "Ingestion request failed.";
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      msg = "Render backend is waking up (takes ~30-45s on free tier after inactivity). Please wait a few seconds and click Ingest again!";
+    }
     if (statusEl) {
       statusEl.className = "status error";
-      statusEl.innerHTML = `<b>●</b> ${escapeHtml(err.message)}`;
+      statusEl.innerHTML = `<b>●</b> ${escapeHtml(msg)}`;
     }
     if (drawer) drawer.classList.remove("hidden");
     if (manualTextInput) manualTextInput.focus();
@@ -519,7 +528,7 @@ window.askQuestion = async function (q) {
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ detail: "Error generating answer." }));
+      const err = await resp.json().catch(() => ({ detail: `Backend returned error ${resp.status}. If waking up, please retry in a moment.` }));
       throw new Error(err.detail || `Server returned error ${resp.status}`);
     }
 
@@ -544,7 +553,11 @@ window.askQuestion = async function (q) {
     conversationHistory.push({ question: q, answer: data.answer });
   } catch (err) {
     if (loading) loading.remove();
-    addMsg("b", `<small>Error</small><span style="color:#ef4444;">${escapeHtml(err.message)}</span>`);
+    let msg = err.message || "Error generating answer.";
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+      msg = "Render backend is waking up (takes ~30s on free tier after sleep). Please retry in a moment!";
+    }
+    addMsg("b", `<small>Notice</small><span style="color:#ef4444;">${escapeHtml(msg)}</span>`);
   }
 };
 
@@ -561,9 +574,9 @@ window.handleChatSubmit = function (e) {
 
 const SUGGESTIONS_MAP = {
   "0wp5Z3z4bjM": ["What dishes are cooked in this video?", "How is the smoked lamb neck curry made?", "What makes the avocado bhatura puff up?"],
-  GvrIe41E7xA: ["Why does Sheldon refuse to answer the phone?", "What game are Leonard and Sheldon playing?", "Why is Sheldon angry at Tam?"],
-  LxCjscf2PjA: ["How does Gordon prepare the eggs?", "What is the secret with the butter?", "When should you season the eggs?"],
-  jNQXAC9IVRw: ["What is cool about elephants?", "Where was the video filmed?", "What does the speaker say about trunks?"],
+  "aircAruvnKk": ["What is a neural network?", "How are the neuron weights and biases calculated?", "What does the sigmoid activation function do?"],
+  "M7lc1UVf-VE": ["What does this video explain about the YouTube API?", "How do you embed a YouTube player with JavaScript?", "What player state events are supported?"],
+  "jNQXAC9IVRw": ["What is cool about elephants?", "Where was the video filmed?", "What does the speaker say about trunks?"],
 };
 
 window.updateSuggestions = function (vid) {

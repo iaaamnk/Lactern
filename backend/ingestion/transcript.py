@@ -306,13 +306,13 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
 
     url = f"https://www.youtube.com/watch?v={video_id}"
 
-    # Try clients in order of cloud-IP resilience: android, ios, mweb, web
-    for client in ["android", "ios", "mweb", "web"]:
+    # Try clients in order of cloud-IP resilience: android, ios
+    for client in ["android", "ios"]:
         ydl_opts = {
             "skip_download": True,
             "quiet": True,
             "no_warnings": True,
-            "socket_timeout": 20,
+            "socket_timeout": 5,
             "extractor_args": {
                 "youtube": {
                     "player_client": [client],
@@ -366,12 +366,12 @@ def fetch_transcript_ytdlp(video_id: str, languages: Optional[List[str]] = None)
                 }
 
                 # Try candidate formats until one succeeds
-                for fmt in candidate_fmts[:5]:
+                for fmt in candidate_fmts[:3]:
                     url_to_fetch = fmt.get("url")
                     if not url_to_fetch:
                         continue
                     try:
-                        resp = httpx.get(url_to_fetch, headers=headers, timeout=15.0)
+                        resp = httpx.get(url_to_fetch, headers=headers, timeout=6.0)
                         if resp.status_code == 200 and resp.text.strip():
                             fmt_ext = fmt.get("ext", "json3")
                             snippets = _parse_timedtext_response(resp.text, ext=fmt_ext)
@@ -399,6 +399,12 @@ def fetch_whisper_fallback(video_id: str) -> List[TranscriptSnippet]:
     import glob
 
     logger.info("Attempting Whisper fallback for video: %s", video_id)
+    # On Render / cloud containers, avoid running Whisper to prevent OOM kills (512MB RAM limit)
+    if os.getenv("RENDER") or os.getenv("LOW_MEMORY_MODE", "false").lower() in ("true", "1"):
+        raise RuntimeError(
+            f"YouTube automated captions are restricted or rate-limited for video '{video_id}' on cloud IPs. "
+            "Please click '✍ Paste text' above to paste the video transcript or notes and index instantly!"
+        )
     ffmpeg_bin = ensure_ffmpeg()
     
     # Check if whisper or faster-whisper is installed
@@ -498,7 +504,7 @@ def fetch_transcript_cloud_proxy(video_id: str) -> List[TranscriptSnippet]:
             "https://transcribeyoutube.com/api/transcript",
             json={"url": url},
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=22.0
+            timeout=5.0
         )
         if resp.status_code == 200:
             data = resp.json()
